@@ -1,0 +1,25 @@
+node_modules
+dist
+*.local
+.env
+.env.*
+!.env.example
+!.env.demo
+!.env.mock
+*.tsbuildinfo
+
+# Base de la demo (se regenera con npm run mock:reset)
+mock-server/db.json
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json

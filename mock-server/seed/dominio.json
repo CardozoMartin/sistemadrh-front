@@ -1,0 +1,156 @@
+{
+  "oficinas": [
+    {
+      "id": "catastro",
+      "nombre": "Catastro",
+      "descripcion": "Inicio de trámites, carga de datos y cierre de expedientes.",
+      "descripcionBandeja": "Expedientes que volvieron a Catastro para el cierre del trámite."
+    },
+    {
+      "id": "recaudacion",
+      "nombre": "Recaudación",
+      "descripcion": "Verificación de deuda y pagos del expediente.",
+      "descripcionBandeja": "Expedientes pendientes de verificación de deuda y pagos."
+    },
+    {
+      "id": "distrito",
+      "nombre": "Distrito",
+      "descripcion": "Inspección y dictamen técnico.",
+      "descripcionBandeja": "Expedientes pendientes de inspección y dictamen técnico del distrito."
+    },
+    {
+      "id": "juridico",
+      "nombre": "Jurídico",
+      "descripcion": "Dictamen jurídico del expediente.",
+      "descripcionBandeja": "Expedientes pendientes de dictamen jurídico."
+    },
+    {
+      "id": "secretaria_general",
+      "nombre": "Secretaría General",
+      "descripcion": "Resolución y firma.",
+      "descripcionBandeja": "Expedientes pendientes de resolución."
+    }
+  ],
+
+  "etapas": [
+    { "id": "pre_carga_datos", "nombre": "Pre carga de datos", "oficinaId": "catastro", "orden": 1 },
+    { "id": "verificacion_deuda", "nombre": "Verificación de deuda", "oficinaId": "recaudacion", "orden": 2 },
+    { "id": "inspeccion_tecnica", "nombre": "Inspección técnica", "oficinaId": "distrito", "orden": 3 },
+    { "id": "dictamen_juridico", "nombre": "Dictamen jurídico", "oficinaId": "juridico", "orden": 4 },
+    { "id": "resolucion", "nombre": "Resolución", "oficinaId": "secretaria_general", "orden": 5 },
+    { "id": "cierre", "nombre": "Cierre del trámite", "oficinaId": "catastro", "orden": 6 }
+  ],
+
+  "tramites": [
+    { "id": "alta_concesion", "nombre": "Alta de Concesión", "descripcion": "Iniciar el proceso de registro para una nueva concesión.", "icono": "add_location_alt" },
+    { "id": "cambio_titularidad", "nombre": "Cambio de Titularidad", "descripcion": "Transferencia de derechos y obligaciones a un nuevo titular legal.", "icono": "switch_access_shortcut" },
+    { "id": "anulacion", "nombre": "Anulación de Concesión", "descripcion": "Solicitud formal para dar de baja una concesión vigente.", "icono": "block" },
+    { "id": "subdivision", "nombre": "Subdivisión", "descripcion": "División de parcelas, terrenos o unidades catastrales.", "icono": "call_split" },
+    { "id": "reubicacion", "nombre": "Reubicación", "descripcion": "Traslado de derechos de uso a una nueva ubicación física.", "icono": "move_location" },
+    { "id": "reduccion_ampliacion", "nombre": "Reducción / Ampliación", "descripcion": "Ajustes en superficie, caudal o alcance de la concesión vigente.", "icono": "open_in_full" },
+    { "id": "permiso_uso", "nombre": "Permisos de Uso de Agua", "descripcion": "Permiso por un período determinado sobre un inmueble sin concesión vigente.", "icono": "event_available" }
+  ],
+
+  "estados": [
+    { "id": "en_tramite", "nombre": "En trámite", "color": "azul", "pendiente": true },
+    { "id": "observado", "nombre": "Observado", "color": "ambar", "pendiente": true },
+    { "id": "finalizado", "nombre": "Finalizado", "color": "verde", "pendiente": false },
+    { "id": "anulado", "nombre": "Anulado", "color": "gris", "pendiente": false },
+    { "id": "subdividido", "nombre": "Subdividida", "color": "gris", "pendiente": false }
+  ],
+
+  "situacionesLegales": [
+    {
+      "id": "titular",
+      "nombre": "Titular de dominio",
+      "titulo": "A. Titular de dominio",
+      "documentacion": ["Informe de registro inmobiliario"]
+    },
+    {
+      "id": "poseedor",
+      "nombre": "Poseedor",
+      "titulo": "B. Poseedor",
+      "documentacion": [
+        "Informe de registro inmobiliario",
+        "Contrato de compra y venta con firma certificada",
+        "Declaratoria de herederos",
+        "Cesión o compra de acciones y derechos posesorios o hereditarios",
+        "Certificado o acta de constatación de posesión ante juez de paz",
+        "Boletas de servicios, impuestos y tasas municipales"
+      ]
+    },
+    {
+      "id": "tenedor",
+      "nombre": "Tenedor",
+      "titulo": "C. Tenedor",
+      "documentacion": [
+        "Contrato de arriendo, aparcería o comodato con firmas certificadas",
+        "Certificación otorgada por comunidades indígenas para la explotación agrícola de un predio"
+      ]
+    }
+  ],
+
+  "usos": [
+    { "id": "industrial", "nombre": "Industrial", "dotacion": 1.2, "unidad": "unidad productiva", "requierePuntoEntrega": false },
+    { "id": "agricola-riego", "nombre": "Agrícola - Riego", "dotacion": 0.75, "unidad": "ha", "requierePuntoEntrega": false },
+    { "id": "agricola-pulverizacion", "nombre": "Agrícola - Pulverización", "dotacion": 0.4, "unidad": "ha", "requierePuntoEntrega": false },
+    { "id": "pecuario", "nombre": "Pecuario", "dotacion": 0.05, "unidad": "cabeza", "requierePuntoEntrega": true },
+    { "id": "energetico", "nombre": "Energético", "dotacion": 2.0, "unidad": "unidad", "requierePuntoEntrega": false },
+    { "id": "minero", "nombre": "Minero", "dotacion": 1.5, "unidad": "unidad", "requierePuntoEntrega": false },
+    { "id": "medicinal", "nombre": "Medicinal", "dotacion": 0.1, "unidad": "unidad", "requierePuntoEntrega": false },
+    { "id": "piscicola", "nombre": "Piscícola", "dotacion": 0.6, "unidad": "ha espejo de agua", "requierePuntoEntrega": false },
+    { "id": "recreativo", "nombre": "Recreativo", "dotacion": 0.2, "unidad": "unidad", "requierePuntoEntrega": false }
+  ],
+
+  "circunscripciones": [
+    { "id": "I", "nombre": "I - Capital" },
+    { "id": "II", "nombre": "II - Zona Norte" },
+    { "id": "III", "nombre": "III - Zona Sur" }
+  ],
+
+  "seccionesCatastrales": [
+    { "id": "A", "nombre": "Sección A" },
+    { "id": "B", "nombre": "Sección B" },
+    { "id": "C", "nombre": "Sección C" },
+    { "id": "D", "nombre": "Sección D" },
+    { "id": "E", "nombre": "Sección E" },
+    { "id": "F", "nombre": "Sección F" },
+    { "id": "G", "nombre": "Sección G" },
+    { "id": "H", "nombre": "Sección H" }
+  ],
+
+  "caracteres": [
+    { "id": "permanente", "nombre": "Permanente" },
+    { "id": "eventual", "nombre": "Eventual" }
+  ],
+
+  "codigosServicio": [
+    { "id": "1", "nombre": "1" },
+    { "id": "2", "nombre": "2" },
+    { "id": "3", "nombre": "3" },
+    { "id": "4", "nombre": "4" },
+    { "id": "5", "nombre": "5" }
+  ],
+
+  "tiposConcesion": [
+    { "id": "permanente", "nombre": "Permanente" },
+    { "id": "temporal", "nombre": "Temporal" }
+  ],
+
+  "documentosJuridicos": [
+    { "id": "dni", "nombre": "DNI del solicitante" },
+    { "id": "escritura", "nombre": "Escritura o título de propiedad" },
+    { "id": "plano", "nombre": "Plano catastral actualizado" },
+    { "id": "certificado_deuda", "nombre": "Certificado de deuda" },
+    { "id": "habilitacion", "nombre": "Habilitación municipal" },
+    { "id": "acta_constitutiva", "nombre": "Acta constitutiva (personas jurídicas)" }
+  ],
+
+  "usuarios": [
+    { "id": "u-catastro", "nombre": "M. Rodríguez", "oficinaId": "catastro" },
+    { "id": "u-recaudacion", "nombre": "S. Herrera", "oficinaId": "recaudacion" },
+    { "id": "u-distrito", "nombre": "Ing. P. Castro", "oficinaId": "distrito" },
+    { "id": "u-juridico", "nombre": "Dra. L. Vega", "oficinaId": "juridico" },
+    { "id": "u-secretaria", "nombre": "C. Molina", "oficinaId": "secretaria_general" }
+  ]
+}

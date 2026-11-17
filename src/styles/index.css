@@ -1,0 +1,132 @@
+@import 'tailwindcss';
+
+/* Modo oscuro por clase (.dark en <html>), igual que el prototipo */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Identidad institucional: la paleta y la letra del portal del Gobierno de Tucumán
+   (tucuman.gob.ar: --tuc-azul #0B4A6E, --tuc-celeste #00A7DD, Montserrat). */
+@theme {
+  --color-primary: #0b4a6e; /* azul Tucumán: botones, enlaces, selección */
+  --color-primary-oscuro: #083a57; /* hover de los botones */
+  --color-celeste: #00a7dd; /* acento (detalles, indicadores) */
+  --color-institucional: #0b4a6e; /* barra superior: el azul de la Provincia, también en modo oscuro */
+  --color-background-light: #f2f6f9;
+  --color-background-dark: #101922;
+  --color-surface-dark: #1a2633;
+  --font-display: 'Montserrat', Arial, Helvetica, sans-serif;
+
+  /* Letras más grandes en todo el sistema (lectura cómoda en la oficina):
+     text-xs 12 → 13 px, text-sm 14 → 15 px. */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background-light font-display text-slate-900 antialiased dark:bg-background-dark dark:text-slate-100;
+  }
+  /* En modo oscuro el azul institucional no se lee sobre el fondo: se usa el celeste. */
+  .dark {
+    --color-primary: #33b9e4;
+    --color-primary-oscuro: #00a7dd;
+  }
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+}
+.material-symbols-outlined.icon-fill {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Visor cartográfico: controles de Leaflet con el mismo estilo que los paneles flotantes.
+   Todo va dentro de .visor-mapa para no tocar los mapas de los formularios. */
+.visor-mapa .leaflet-bottom {
+  bottom: 1.75rem; /* encima de la barra de estado */
+}
+.visor-mapa .leaflet-control-zoom {
+  border: 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 0 0 1px rgb(15 23 42 / 0.1);
+}
+.visor-mapa .leaflet-control-zoom a {
+  width: 2.5rem;
+  height: 2.5rem;
+  line-height: 2.5rem;
+  font-size: 1.25rem;
+  color: #334155;
+}
+.visor-mapa .leaflet-control-attribution {
+  border-radius: 0.375rem 0 0 0;
+  background: rgb(255 255 255 / 0.8);
+  font-size: 10px;
+}
+.visor-mapa .leaflet-tooltip {
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  font-family: var(--font-display);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(15 23 42 / 0.08);
+}
+.visor-mapa .leaflet-tooltip.medicion-etiqueta {
+  background: #f97316;
+  color: #fff;
+  font-weight: 700;
+}
+.visor-mapa .leaflet-tooltip.medicion-etiqueta::before {
+  border-right-color: #f97316;
+}
+.dark .visor-mapa .leaflet-control-zoom a {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+.dark .visor-mapa .leaflet-control-attribution {
+  background: rgb(15 23 42 / 0.8);
+  color: #94a3b8;
+}
+.dark .visor-mapa .leaflet-control-attribution a {
+  color: #93c5fd;
+}
+.dark .visor-mapa .leaflet-tooltip:not(.medicion-etiqueta),
+.dark .visor-mapa .leaflet-popup-content-wrapper,
+.dark .visor-mapa .leaflet-popup-tip {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+.visor-midiendo .leaflet-tooltip:not(.medicion-etiqueta) {
+  display: none;
+}
+/* Número de concesión sobre su polígono: rojo con contorno blanco (se lee sobre cualquier fondo). */
+.visor-mapa .etiqueta-concesion span {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #dc2626;
+  text-shadow:
+    -1.5px -1.5px 0 #fff, 1.5px -1.5px 0 #fff, -1.5px 1.5px 0 #fff, 1.5px 1.5px 0 #fff,
+    0 0 4px #fff;
+  pointer-events: none;
+}
