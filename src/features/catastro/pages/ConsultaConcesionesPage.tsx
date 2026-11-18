@@ -13,7 +13,6 @@ import { cn } from '@/lib/cn'
 import type { ColorEstado } from '@/types/domain'
 import {
   CONCESIONES_POR_PAGINA,
-  exportarConcesiones,
   useBuscarConcesiones,
   useFichaConcesion,
   useOpcionesFiltros,
@@ -22,6 +21,7 @@ import {
   type FiltrosConcesiones,
   type OpcionesFiltros,
 } from '../consultaConcesiones'
+import { ExportarConcesionesDialog } from '../components/ExportarConcesionesDialog'
 
 type Campo = keyof FiltrosConcesiones
 
@@ -278,20 +278,7 @@ interface PropsResultados {
 function Resultados({ busqueda, filtros, pagina, setPagina, conFiltros, onFicha }: PropsResultados) {
   const navigate = useNavigate()
   const datos = busqueda.data
-  const [exportando, setExportando] = useState(false)
-  const [errorExportar, setErrorExportar] = useState<string | null>(null)
-
-  async function exportar() {
-    setExportando(true)
-    setErrorExportar(null)
-    try {
-      await exportarConcesiones(filtros)
-    } catch (e) {
-      setErrorExportar(e instanceof Error ? e.message : 'No se pudo exportar la planilla.')
-    } finally {
-      setExportando(false)
-    }
-  }
+  const [exportar, setExportar] = useState(false)
   const paginas = datos ? Math.max(1, Math.ceil(datos.total / CONCESIONES_POR_PAGINA)) : 1
 
   function tabla() {
@@ -344,16 +331,15 @@ function Resultados({ busqueda, filtros, pagina, setPagina, conFiltros, onFicha 
             size="sm"
             variant="secondary"
             iconLeft="download"
-            loading={exportando}
-            disabled={exportando || !datos?.total}
-            title="Todas las concesiones de la búsqueda (no solo esta página), con todos sus detalles"
-            onClick={() => void exportar()}
+            disabled={!datos?.total}
+            title="Todas las concesiones de la búsqueda (no solo esta página), con las columnas que elija"
+            onClick={() => setExportar(true)}
           >
             Exportar a Excel
           </Button>
         </div>
       </div>
-      {errorExportar && <Alert className="mx-6 mt-4">{errorExportar}</Alert>}
+      <ExportarConcesionesDialog open={exportar} onClose={() => setExportar(false)} filtros={filtros} total={datos?.total ?? 0} />
       {datos?.datosSensiblesOcultos && (
         <Alert tone="info" className="mx-6 mt-4">
           Los documentos se muestran parcialmente: su usuario no tiene permiso para ver datos sensibles.
