@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { IconButton } from '@/components/ui/IconButton'
 import { useDominio } from '@/hooks/useDominio'
+import { cn } from '@/lib/cn'
+import { fechaCorta, finDePeriodo, hoyISO } from '@/lib/fechas'
 import { decimalPositivo } from '@/lib/mascaras'
 import { CoordenadaFields } from './CoordenadaFields'
 import { caudalDeUso, caudalTotal, redondear2 } from '../dotacion'
@@ -18,6 +20,67 @@ interface Props {
 }
 
 type Item = { uso: string; magnitud: string }
+
+/** Duraciones que se ofrecen para el fin del período (el mínimo es 1 año). */
+const DURACIONES = [1, 2, 5, 10]
+
+/**
+ * Inicio y fin del período. El inicio arranca en la fecha del día (se puede cambiar) y el fin se
+ * elige con un clic (1, 2, 5 o 10 años) o a mano; el período dura al menos 1 año.
+ */
+function PeriodoFields({ prefix }: { prefix: string }) {
+  const n = (campo: string) => `${prefix}.${campo}`
+  const { control, setValue } = useFormContext()
+  const inicio = (useWatch({ control, name: n('periodoInicio') }) as string | undefined) ?? ''
+  const fin = (useWatch({ control, name: n('periodoFin') }) as string | undefined) ?? ''
+  const poner = (campo: string, valor: string) => setValue(n(campo), valor, { shouldDirty: true, shouldValidate: true })
+  const hoy = hoyISO()
+
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <FormTextField name={n('periodoInicio')} label="Inicio del período" type="date" />
+        {inicio !== hoy && (
+          <button type="button" onClick={() => poner('periodoInicio', hoy)} className="self-start text-xs font-medium text-primary hover:underline">
+            Usar la fecha de hoy ({fechaCorta(hoy)})
+          </button>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <FormTextField
+          name={n('periodoFin')}
+          label="Fin del período"
+          type="date"
+          min={inicio ? finDePeriodo(inicio, 1) : undefined}
+          hint={inicio ? `Mínimo 1 año: desde el ${fechaCorta(finDePeriodo(inicio, 1))}.` : 'Cargue primero el inicio del período.'}
+        />
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Duración del período">
+          {DURACIONES.map((anios) => {
+            const valor = inicio ? finDePeriodo(inicio, anios) : ''
+            const elegido = !!valor && fin === valor
+            return (
+              <button
+                key={anios}
+                type="button"
+                disabled={!inicio}
+                onClick={() => poner('periodoFin', valor)}
+                title={valor ? `Hasta el ${fechaCorta(valor)}` : undefined}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                  elegido
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-slate-300 text-slate-700 hover:border-primary hover:text-primary dark:border-slate-600 dark:text-slate-300',
+                )}
+              >
+                {anios} {anios === 1 ? 'año' : 'años'}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </>
+  )
+}
 
 /** Carácter, período, desagüe, tabla de usos con cálculo de caudal y punto de entrega pecuario. */
 export function UsosFields({ prefix, onCaudalTotalChange }: Props) {
@@ -45,8 +108,7 @@ export function UsosFields({ prefix, onCaudalTotalChange }: Props) {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <FormSelectField name={n('caracter')} label="Carácter" placeholder="Seleccione…" options={opcionesDe(caracteres)} />
         <FormSelectField name={n('codigoServicio')} label="Código de servicio" placeholder="Seleccione…" options={opcionesDe(codigosServicio)} />
-        <FormTextField name={n('periodoInicio')} label="Inicio del período" type="date" />
-        <FormTextField name={n('periodoFin')} label="Fin del período" type="date" />
+        <PeriodoFields prefix={prefix} />
         <CoordenadaFields name={n('desague')} titulo="Desagüe" required soloPosgar className="md:col-span-2" />
       </div>
 

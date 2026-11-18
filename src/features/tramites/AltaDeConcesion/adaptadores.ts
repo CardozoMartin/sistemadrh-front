@@ -11,6 +11,7 @@ import type { DomicilioForm } from '../shared/schemas/domicilio'
 import type { TitularForm } from '../shared/schemas/titular'
 import type { AltaBackend } from './backend.types'
 import { preCargaVacia, type PreCargaForm } from './schemas'
+import { hoyISO } from '@/lib/fechas'
 
 const textoONulo = (v: string | null | undefined) => (v ? v : undefined)
 const numeroONulo = (v: string) => (v.trim() === '' ? undefined : Number(v))
@@ -120,7 +121,7 @@ export function altaAFormulario(a: AltaBackend): PreCargaForm {
   const vertices = anillo.map(([lng, lat]) => [lat, lng] as [number, number])
   if (vertices.length > 1 && vertices[0][0] === vertices.at(-1)![0] && vertices[0][1] === vertices.at(-1)![1]) vertices.pop()
 
-  return {
+  const formulario: PreCargaForm = {
     titulares: a.titulares.length
       ? a.titulares.map((p) => ({
           tipoPersona: p.tipoPersona === 'JURIDICA' ? 'juridica' : 'fisica',
@@ -201,6 +202,9 @@ export function altaAFormulario(a: AltaBackend): PreCargaForm {
         }
       : vacio.suministro,
   }
+  // El período arranca hoy si no se cargó (se puede cambiar). En el cierre los usos no se tocan.
+  if (!formulario.usos.periodoInicio && a.circuito.etapa !== 'CIERRE') formulario.usos.periodoInicio = hoyISO()
+  return formulario
 }
 
 /** Primera sección sin completar (para retomar la carga donde quedó). */

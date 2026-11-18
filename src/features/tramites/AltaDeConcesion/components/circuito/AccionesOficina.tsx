@@ -11,7 +11,8 @@ import { mensajeDeError } from '@/services/api/errors'
 import { AvisoSoloConsulta, useActor } from '@/features/auth/useActor'
 import { altaConcesionApi, type ResultadoDictamen } from '../../api'
 import type { AltaBackend } from '../../backend.types'
-import { useAccionAlta, useAntecedentesDeuda, useCancelarDeuda, useEmails, useNotificarDeuda, useTomar } from '../../hooks'
+import { useAccionAlta, useAntecedentesDeuda, useCancelarDeuda, useTomar } from '../../hooks'
+import { AvisoDeudaEditable } from './AvisoDeudaEditable'
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 
@@ -63,67 +64,14 @@ export function Opciones<T extends string>({ valor, onChange, opciones }: { valo
 
 type DecisionDeuda = 'APTO' | 'NO_APTO'
 
-/**
- * Con el expediente en espera por deuda («No apto»): avisar por correo a los titulares que deben,
- * al email que tienen cargado. El correo solo informa en qué concesión hay deuda (sin montos).
- */
-function AvisoDeudaPorEmail({ alta, deudores }: { alta: AltaBackend; deudores: string[] }) {
-  const emails = useEmails(alta.id)
-  const notificar = useNotificarDeuda(alta.id)
-  const [nota, setNota] = useState('')
-  const avisos = (emails.data ?? []).filter((e) => e.tipo === 'AVISO_DEUDA')
-  const titulares = alta.titulares.filter((t) => deudores.includes(t.personaId))
-  const nombre = (t: AltaBackend['titulares'][number]) => t.razonSocial ?? `${t.apellido}, ${t.nombre}`
-  const resultado = notificar.data
-  const fecha = (iso: string) => new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
-
+/** Encabezado de cada paso de la pantalla de Recaudación. */
+function Paso({ numero, titulo, children }: { numero: number; titulo: string; children?: ReactNode }) {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50/60 p-4 dark:border-red-500/30 dark:bg-red-500/5">
-      <div className="flex items-start gap-2">
-        <Icon name="mail" className="mt-0.5 text-red-600 dark:text-red-300" />
-        <div>
-          <p className="text-sm font-semibold text-red-800 dark:text-red-200">Avisar la deuda por correo</p>
-          <p className="text-xs text-red-800/80 dark:text-red-200/80">Se informa que tiene deuda en la concesión, sin indicar montos. Llega al email cargado de cada titular.</p>
-        </div>
-      </div>
-
-      <ul className="flex flex-col gap-1 text-sm">
-        {titulares.map((t) => (
-          <li key={t.personaId} className="flex flex-wrap items-center gap-x-2">
-            <span className="font-medium">{nombre(t)}</span>
-            {t.email ? <span className="text-slate-600 dark:text-slate-300">→ {t.email}</span> : <span className="text-amber-700 dark:text-amber-300">sin email cargado: no se le puede avisar</span>}
-          </li>
-        ))}
-      </ul>
-
-      <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Agregar al correo (opcional): horario de atención, dónde acercarse…" className={controlClass({ className: 'py-2' })} />
-
-      {resultado && (
-        <Alert tone="info">
-          {resultado.enviados.map((e) => (
-            <span key={e.id} className="block">
-              {e.estado === 'ENVIADO'
-                ? `Enviado a ${e.titular} (${e.para.join(', ')}).`
-                : e.estado === 'NO_ENVIADO_PRUEBA'
-                  ? `Registrado para ${e.titular} (${e.para.join(', ')}), pero NO salió: el servidor de correo no está configurado.`
-                  : `No se pudo enviar a ${e.titular}: ${e.error ?? 'error del servidor de correo'}.`}
-            </span>
-          ))}
-          {resultado.sinCorreo.length > 0 && <span className="block">Sin email cargado: {resultado.sinCorreo.join(', ')}.</span>}
-        </Alert>
-      )}
-      {notificar.error && <Alert>{mensajeDeError(notificar.error)}</Alert>}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" variant="secondary" iconLeft="send" loading={notificar.isPending} disabled={!titulares.some((t) => t.email)} onClick={() => notificar.mutate(nota.trim() || undefined)}>
-          {avisos.length ? 'Enviar el aviso de nuevo' : 'Enviar aviso de deuda'}
-        </Button>
-        {avisos[0] && (
-          <span className="text-xs text-slate-600 dark:text-slate-400">
-            Último aviso: {fecha(avisos[0].fecha)} a {avisos[0].para.join(', ')}
-            {avisos[0].estado !== 'ENVIADO' && ' (no salió)'} · {avisos.length} en total
-          </span>
-        )}
+    <div className="flex items-start gap-3">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">{numero}</span>
+      <div>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">{titulo}</p>
+        {children && <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{children}</p>}
       </div>
     </div>
   )
@@ -243,24 +191,20 @@ function AccionRecaudacion({ alta, enEspera }: { alta: AltaBackend; enEspera: bo
   return (
     <div className="flex flex-col gap-4">
       {enEspera && (
-        <>
-          <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/30 dark:bg-red-500/10">
-            <Icon name="pause_circle" className="mt-0.5 text-red-600 dark:text-red-300" />
-            <div className="text-sm text-red-800 dark:text-red-200">
-              <p className="font-semibold">No apto · pendiente de pago</p>
-              <p>
-                El expediente queda pausado en Recaudación. Cuando el titular pague, marque «Apto»: se levanta la deuda y pasa a {siguiente}. Si no se puede cobrar, al final puede darle curso con deuda.
-              </p>
-            </div>
+        <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/30 dark:bg-red-500/10">
+          <Icon name="pause_circle" className="mt-0.5 text-red-600 dark:text-red-300" />
+          <div className="text-sm text-red-800 dark:text-red-200">
+            <p className="font-semibold">En espera · pendiente de pago</p>
+            <p>
+              Cuando el titular pague, marque «Apto»: se levanta la deuda y pasa a {siguiente}. Mientras tanto puede avisarle por correo (paso 3). Si no se puede cobrar, al final puede darle curso con deuda.
+            </p>
           </div>
-          <AvisoDeudaPorEmail alta={alta} deudores={[...new Set([...concesiones.filter((c) => c.tieneDeuda).flatMap((c) => c.deTitulares), ...otrasDeudas.map((d) => d.personaId)])]} />
-        </>
+        </div>
       )}
 
-      <div>
-        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">¿Los titulares tienen deudas en otras concesiones?</p>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Titulares del alta: {titulares.map((t) => t.nombre).join(' · ') || 'sin titulares cargados'}</p>
-      </div>
+      <Paso numero={1} titulo="Concesiones de los titulares">
+        Titulares del alta: {titulares.map((t) => t.nombre).join(' · ') || 'sin titulares cargados'}. Tener otras concesiones solo se informa; lo que frena el alta es la deuda.
+      </Paso>
 
       {/* Lo que informa el sistema: las otras concesiones otorgadas de los titulares. */}
       {concesiones.length === 0 ? (
@@ -344,6 +288,7 @@ function AccionRecaudacion({ alta, enEspera }: { alta: AltaBackend; enEspera: bo
         </div>
       )}
 
+      <Paso numero={2} titulo="Decisión">¿Los titulares tienen deuda en alguna de esas concesiones?</Paso>
       <Opciones
         valor={decision}
         onChange={(d) => {
@@ -386,7 +331,13 @@ function AccionRecaudacion({ alta, enEspera }: { alta: AltaBackend; enEspera: bo
         </Button>
       </div>
 
-      {enEspera && <CursoConDeuda alta={alta} siguiente={siguiente} />}
+      {enEspera && (
+        <>
+          <Paso numero={3} titulo="Avisar al titular">El correo se arma solo con las deudas de cada titular; puede editarlo antes de enviarlo.</Paso>
+          <AvisoDeudaEditable alta={alta} />
+          <CursoConDeuda alta={alta} siguiente={siguiente} />
+        </>
+      )}
     </div>
   )
 }

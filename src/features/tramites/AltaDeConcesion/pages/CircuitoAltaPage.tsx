@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ROUTES } from '@/config/routes'
 import { Button } from '@/components/ui/Button'
@@ -13,6 +14,7 @@ import { BarraEtapas } from '../components/circuito/BarraEtapas'
 import { DondeEsta } from '../components/circuito/DondeEsta'
 import { DatosAlta } from '../components/circuito/DatosAlta'
 import { RegistroExpediente } from '../components/circuito/RegistroExpediente'
+import type { AltaBackend } from '../backend.types'
 import { useAlta } from '../hooks'
 import { admiteCorreccion } from './CorreccionDatosPage'
 
@@ -29,6 +31,31 @@ export default function CircuitoAltaPage() {
 /** Desde la búsqueda general: datos, auditoría e historial, sin el panel de trabajo de la oficina. */
 export function ConsultaAltaPage() {
   return <ExpedienteAlta consulta />
+}
+
+/**
+ * Los datos cargados del alta. En Recaudación no hacen falta para verificar la deuda: quedan
+ * plegados y se abren con un botón.
+ */
+function DatosDelExpediente({ alta, plegado }: { alta: AltaBackend; plegado: boolean }) {
+  const [abierto, setAbierto] = useState(!plegado)
+  return (
+    <Card className="p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">Datos del expediente</h2>
+        {plegado && (
+          <Button size="sm" variant="ghost" iconLeft={abierto ? 'expand_less' : 'visibility'} onClick={() => setAbierto(!abierto)}>
+            {abierto ? 'Ocultar datos' : 'Ver datos del expediente'}
+          </Button>
+        )}
+      </div>
+      {abierto && (
+        <div className="mt-4">
+          <DatosAlta alta={alta} />
+        </div>
+      )}
+    </Card>
+  )
 }
 
 function ExpedienteAlta({ consulta }: { consulta: boolean }) {
@@ -112,10 +139,7 @@ function ExpedienteAlta({ consulta }: { consulta: boolean }) {
               </Card>
             )}
 
-            <Card className="p-6">
-              <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">Datos del expediente</h2>
-              <DatosAlta alta={a} />
-            </Card>
+            <DatosDelExpediente alta={a} plegado={!consulta && a.circuito.etapa === 'RECAUDACION'} />
           </div>
 
           {/* Historial y auditoría a pedido: no ocupan la pantalla hasta que se abren. */}

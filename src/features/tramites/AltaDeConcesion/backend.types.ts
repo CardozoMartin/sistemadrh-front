@@ -5,6 +5,24 @@ import type { Superposicion } from '@/services/sig'
 
 export type EtapaCircuito = 'CARGA' | 'CORRECCION' | 'RECAUDACION' | 'DISTRITO' | 'JURIDICO' | 'SECRETARIA_GENERAL' | 'CIERRE' | 'ESPERA_PADRON'
 export type EstadoExpedienteBackend = 'EN_TRAMITE' | 'OBSERVADO' | 'EN_ESPERA' | 'FINALIZADO' | 'RECHAZADO' | 'ARCHIVADO' | 'ANULADO'
+/** GET /tramites/alta-concesion/:id/reasignables: a quién puede pasar el alta el Jefe de Catastro. */
+export interface UsuarioReasignable {
+  id: string
+  nombre: string
+  legajo: string
+}
+
+/** GET …/recaudacion/aviso-deuda: el correo de cada titular con deuda, con el texto base (editable). */
+export interface BorradorAvisoDeuda {
+  correos: { personaId: string; titular: string; email: string | null; asunto: string; cuerpo: string }[]
+}
+
+/** POST …/recaudacion/notificar-deuda: sin `textos`, el backend usa el texto base. */
+export interface NotificarDeudaDto {
+  observaciones?: string
+  textos?: { personaId: string; asunto: string; cuerpo: string }[]
+}
+
 export type OficinaBackend = 'catastro' | 'recaudacion' | 'distrito' | 'juridico' | 'secretaria_general'
 
 export interface CircuitoAlta {
@@ -200,7 +218,7 @@ export interface AuditoriaExpediente {
   }[]
   eventos: {
     id: string
-    accion: 'INICIO' | 'TOMA' | 'PASE' | 'DEVOLUCION' | 'CAMBIO_ETAPA' | 'CAMBIO_ESTADO' | 'CORRECCION'
+    accion: 'INICIO' | 'TOMA' | 'PASE' | 'DEVOLUCION' | 'CAMBIO_ETAPA' | 'CAMBIO_ESTADO' | 'CORRECCION' | 'LIBERACION' | 'REASIGNACION'
     fecha: string
     usuario: UsuarioAuditado
     oficina: string
@@ -254,6 +272,8 @@ export interface ExpedienteEnBandeja {
   etapaNombre: string
   titular: string | null
   tomadoPor: string | null
+  /** Id de quien lo tiene tomado (para saber si es de quien mira la bandeja). */
+  tomadoPorId?: string | null
   enLaOficinaDesde: string | null
   /** Oficina de la que vino con el último pase (null: se inició en esta oficina). El modo demo no lo informa. */
   vieneDe?: OficinaBackend | null

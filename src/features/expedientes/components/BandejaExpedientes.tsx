@@ -12,7 +12,8 @@ import { useDominio } from '@/hooks/useDominio'
 import { cn } from '@/lib/cn'
 import { mensajeDeError } from '@/services/api/errors'
 import type { EstadoExpedienteBackend, ExpedienteEnBandeja, OficinaBackend, PlazoEnOficina } from '@/features/tramites/AltaDeConcesion/backend.types'
-import { useBandeja, useCancelarAlta, useTomarDeBandeja } from '@/features/tramites/AltaDeConcesion/hooks'
+import { Select } from '@/components/form'
+import { useBandeja, useCancelarAlta, useLiberarAlta, useReasignables, useReasignarAlta, useTomarDeBandeja } from '@/features/tramites/AltaDeConcesion/hooks'
 
 /** Pantalla de trabajo de cada trámite que ya circula en el backend real. */
 const RUTA_TRABAJO: Record<string, (id: string) => string> = {
@@ -128,12 +129,99 @@ function CancelarAlta({ expediente, onCerrar }: { expediente: ExpedienteEnBandej
   )
 }
 
+/** Suelta el alta: vuelve a «sin revisar» de la oficina y cualquiera la puede tomar. */
+function LiberarAlta({ expediente, propio, onCerrar }: { expediente: ExpedienteEnBandeja | null; propio: boolean; onCerrar: () => void }) {
+  const liberar = useLiberarAlta()
+  const cerrar = () => {
+    liberar.reset()
+    onCerrar()
+  }
+  return (
+    <ConfirmDialog
+      open={!!expediente}
+      title="Liberar expediente"
+      message={
+        propio
+          ? `El expediente N° ${expediente?.numero ?? ''} vuelve a «Sin revisar» y cualquier usuario de la oficina lo puede tomar. Lo cargado hasta ahora se conserva.`
+          : `El expediente N° ${expediente?.numero ?? ''} lo tiene tomado ${expediente?.tomadoPor ?? ''}. Al liberarlo vuelve a «Sin revisar» y cualquier usuario de la oficina lo puede tomar. Lo cargado se conserva y queda registrado quién lo liberó.`
+      }
+      confirmLabel="Liberar"
+      cancelLabel="Volver"
+      loading={liberar.isPending}
+      onCancel={cerrar}
+      onConfirm={() => expediente && liberar.mutate(expediente.id, { onSuccess: cerrar })}
+    >
+      {liberar.isError && <Alert className="mt-3">{mensajeDeError(liberar.error)}</Alert>}
+    </ConfirmDialog>
+  )
+}
+
+/** Jefe de Catastro: pasa el alta a otro usuario de la oficina, con el motivo. */
+function ReasignarAlta({ expediente, onCerrar }: { expediente: ExpedienteEnBandeja | null; onCerrar: () => void }) {
+  const reasignar = useReasignarAlta()
+  const usuarios = useReasignables(expediente?.id ?? null)
+  const [destino, setDestino] = useState('')
+  const [motivo, setMotivo] = useState('')
+  const cerrar = () => {
+    setDestino('')
+    setMotivo('')
+    reasignar.reset()
+    onCerrar()
+  }
+  const listo = !!destino && motivo.trim().length >= 10
+  return (
+    <ConfirmDialog
+      open={!!expediente}
+      title="Reasignar expediente"
+      message={`El expediente N° ${expediente?.numero ?? ''} lo tiene tomado ${expediente?.tomadoPor ?? 'nadie'}. Elija quién lo continúa: queda tomado por esa persona y el cambio se registra en el historial.`}
+      confirmLabel="Reasignar"
+      cancelLabel="Volver"
+      loading={reasignar.isPending}
+      onCancel={cerrar}
+      onConfirm={() => {
+        if (!expediente || !listo) return
+        reasignar.mutate({ id: expediente.id, usuarioId: destino, observaciones: motivo.trim() }, { onSuccess: cerrar })
+      }}
+    >
+      <div className="flex flex-col gap-3">
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
+          Nuevo responsable
+          <Select
+            options={(usuarios.data ?? []).map((u) => ({ value: u.id, label: `${u.nombre} (${u.legajo})` }))}
+            placeholder={usuarios.isPending ? 'Cargando…' : 'Seleccionar…'}
+            disabled={!usuarios.data}
+            value={destino}
+            onChange={(ev) => setDestino(ev.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
+          Motivo
+          <textarea
+            rows={3}
+            value={motivo}
+            onChange={(ev) => setMotivo(ev.target.value)}
+            placeholder="Ej.: El responsable está de licencia."
+            className={controlClass({ className: 'resize-y' })}
+          />
+        </label>
+        {motivo.trim().length > 0 && motivo.trim().length < 10 && <p className="text-xs text-slate-500 dark:text-slate-400">Mínimo 10 caracteres.</p>}
+        {usuarios.isError && <Alert>{mensajeDeError(usuarios.error)}</Alert>}
+        {reasignar.isError && <Alert>{mensajeDeError(reasignar.error)}</Alert>}
+      </div>
+    </ConfirmDialog>
+  )
+}
+
 function Tabla({ oficina, grupo, expedientes }: { oficina: OficinaBackend; grupo: Grupo; expedientes: ExpedienteEnBandeja[] }) {
   const navigate = useNavigate()
   const d = useDominio()
   const tomar = useTomarDeBandeja()
-  const { puede } = useSesion()
+  const { puede, usuario } = useSesion()
   const [aCancelar, setACancelar] = useState<ExpedienteEnBandeja | null>(null)
+  const [aLiberar, setALiberar] = useState<ExpedienteEnBandeja | null>(null)
+  const [aReasignar, setAReasignar] = useState<ExpedienteEnBandeja | null>(null)
+  // Jefe de Catastro (o administrador): anula, libera y reasigna altas que tiene tomadas otro.
+  const supervisa = puede('ALTA_SUPERVISAR') && oficina === 'catastro'
   const nombreTramite = (codigo: string) => d.tramites.find((t) => t.codigo === codigo)?.nombre ?? codigo
   // Si el trámite se inició en esta oficina, la oficina anterior es ella misma.
   const nombreOficina = d.oficina(oficina)?.nombre ?? oficina
@@ -209,7 +297,17 @@ function Tabla({ oficina, grupo, expedientes }: { oficina: OficinaBackend; grupo
                       </Button>
                     ) : (
                       <div className="flex items-center justify-end gap-1">
-                        {sePuedeCancelar(e) && puede('ALTA_INICIAR') && (
+                        {e.tipoTramite === 'ALTA_CONCESION' && (e.tomadoPorId === usuario?.id || supervisa) && (
+                          <Button size="sm" variant="ghost" iconLeft="lock_open" title="Soltar el expediente: vuelve a «sin revisar» y otro lo puede tomar" onClick={() => setALiberar(e)}>
+                            Liberar
+                          </Button>
+                        )}
+                        {e.tipoTramite === 'ALTA_CONCESION' && supervisa && (
+                          <Button size="sm" variant="ghost" iconLeft="swap_horiz" title="Pasar el expediente a otro usuario de Catastro" onClick={() => setAReasignar(e)}>
+                            Reasignar
+                          </Button>
+                        )}
+                        {sePuedeCancelar(e) && puede('ALTA_INICIAR') && (e.tomadoPorId === usuario?.id || supervisa) && (
                           <Button
                             size="sm"
                             variant="danger"
@@ -234,6 +332,8 @@ function Tabla({ oficina, grupo, expedientes }: { oficina: OficinaBackend; grupo
         </table>
       </div>
       <CancelarAlta expediente={aCancelar} onCerrar={() => setACancelar(null)} />
+      <LiberarAlta expediente={aLiberar} propio={aLiberar?.tomadoPorId === usuario?.id} onCerrar={() => setALiberar(null)} />
+      <ReasignarAlta expediente={aReasignar} onCerrar={() => setAReasignar(null)} />
     </>
   )
 }
