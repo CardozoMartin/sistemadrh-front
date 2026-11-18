@@ -1,31 +1,35 @@
 // Peticiones del Cambio de Titularidad. Solo hablan con la API (sin estado ni caché):
 // eso lo resuelven los hooks de ./hooks.ts con TanStack Query.
 import { api } from '@/services/api/client'
-import { ApiError } from '@/services/api/errors'
-import { filtro } from '@/services/api/jsonServer'
+import { backend } from '@/services/api/backend'
 import { domiciliosDe, titularesDe, titularPrincipal, type Concesion } from '@/features/concesiones/datos'
-import type { EstadoExpediente, Expediente, Oficina } from '@/types/domain'
+import type { Expediente, Oficina } from '@/types/domain'
 import { expedientesApi } from '../../expedientes/api'
-import { validarInicioSobreConcesion } from '../shared/inicioSobreConcesion'
 import { nombreTitular } from '../shared/schemas/titular'
 import type { InicioCambioForm, NuevoTitularForm } from './schemas'
 import type { BorradorCambioTitularidad, DatosExpedienteCambioTitularidad } from './types'
 
 const BORRADORES = '/borradoresCambioTitularidad'
+/** Backend real (NestJS): ver backend/src/tramites/cambio-titularidad/README.md. */
+const CAMBIO = '/tramites/cambio-titularidad'
 
-/** Ya hay un cambio en carga con ese número de expediente o sobre esa concesión. */
-export class CambioEnCargaError extends ApiError {
-  readonly borradorId: string
-  constructor(mensaje: string, borradorId: string) {
-    super(mensaje, 409, 'CAMBIO_EN_CARGA')
-    this.borradorId = borradorId
-  }
+/** Un cambio en trámite (GET /tramites/cambio-titularidad). */
+export interface CambioEnTramite {
+  expedienteId: string
+  /** N° completo: "123/332-2026". */
+  expediente: string
+  concesion: { id: string; numero: string | null }
+  estado: string
+  /** Etapa del circuito (CARGA, CORRECCION, RECAUDACION…). */
+  etapa: string
+  oficinaActual: string
+  nuevoTitular: string | null
+  creadoEn: string
 }
 
-export interface IniciarCambioInput {
-  form: InicioCambioForm
-  /** Estados que cuentan como trámite en curso (de /estados). */
-  estadosPendientes: EstadoExpediente[]
+/** Respuesta de POST /tramites/cambio-titularidad (solo lo que usa el inicio). */
+export interface CambioIniciado {
+  expediente: { id: string }
 }
 
 export interface EnviarCambioInput {
@@ -43,39 +47,23 @@ export interface EnviarCambioInput {
 export const descripcionCambio = (actual: string, nuevo: string) => `${actual} → ${nuevo}`
 
 export const cambioTitularidadApi = {
-  async listarBorradores(): Promise<BorradorCambioTitularidad[]> {
-    const { data } = await api.get<BorradorCambioTitularidad[]>(BORRADORES, { params: { _sort: '-actualizado' } })
-    return data
-  },
-
   async obtenerBorrador(id: string): Promise<BorradorCambioTitularidad> {
     const { data } = await api.get<BorradorCambioTitularidad>(`${BORRADORES}/${id}`)
     return data
   },
 
+  /** Cambios en trámite (backend real), del más nuevo al más viejo. */
+  async listarEnTramite(): Promise<CambioEnTramite[]> {
+    const { data } = await backend.get<CambioEnTramite[]>(CAMBIO)
+    return data
+  },
+
   /**
-   * Paso 1. Valida el número de expediente y que la concesión esté vigente y sin otro
-   * trámite en curso. Con el backend real estas validaciones las hace el servidor (409).
+   * Paso 1 (backend real). El servidor valida que el N° de expediente esté libre y sea del año,
+   * y que la concesión esté vigente y sin otro trámite en curso (409 con el mensaje).
    */
-  async iniciar({ form, estadosPendientes }: IniciarCambioInput): Promise<BorradorCambioTitularidad> {
-    const { numeroExpediente, concesionId } = form
-    // Propio del cambio: no puede haber otra carga en curso con ese número o sobre esa concesión.
-    const { data: mismoNumero } = await api.get<BorradorCambioTitularidad[]>(BORRADORES, { params: filtro({ numeroExpediente }) })
-    if (mismoNumero[0]) throw new CambioEnCargaError(`Ya hay un cambio de titularidad en carga con el expediente ${numeroExpediente}.`, mismoNumero[0].id)
-    const { data: mismaConcesion } = await api.get<BorradorCambioTitularidad[]>(BORRADORES, { params: filtro({ concesionId }) })
-    if (mismaConcesion[0]) throw new CambioEnCargaError('Ya hay un cambio de titularidad en carga para esa concesión.', mismaConcesion[0].id)
-
-    // Común a todos los trámites sobre una concesión.
-    const concesion = await validarInicioSobreConcesion({ numeroExpediente, concesionId, estadosPendientes })
-
-    const ahora = new Date().toISOString()
-    const { data } = await api.post<BorradorCambioTitularidad>(BORRADORES, {
-      ...form,
-      numeroConcesion: concesion.numeroConcesion,
-      titularActual: titularPrincipal(concesion),
-      creado: ahora,
-      actualizado: ahora,
-    })
+  async iniciar(form: InicioCambioForm): Promise<CambioIniciado> {
+    const { data } = await backend.post<CambioIniciado>(CAMBIO, { concesionId: form.concesionId, expediente: form.expediente })
     return data
   },
 

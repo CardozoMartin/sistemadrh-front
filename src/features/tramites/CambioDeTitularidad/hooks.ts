@@ -11,13 +11,16 @@ import type { BorradorCambioTitularidad } from './types'
 export const cambioKeys = {
   all: ['cambiosTitularidad'] as const,
   borradores: () => [...cambioKeys.all, 'borradores'] as const,
+  /** Cambios en trámite del backend real. */
+  enTramite: () => ['backend', 'cambiosTitularidad', 'en-tramite'] as const,
   borrador: (id: string) => [...cambioKeys.all, 'borrador', id] as const,
 }
 
 // --- Consultas -----------------------------------------------------------------
 
-export function useBorradoresCambio() {
-  return useQuery({ queryKey: cambioKeys.borradores(), queryFn: cambioTitularidadApi.listarBorradores })
+/** Cambios en trámite (backend real). */
+export function useCambiosEnTramite() {
+  return useQuery({ queryKey: cambioKeys.enTramite(), queryFn: cambioTitularidadApi.listarEnTramite })
 }
 
 export function useBorradorCambio(id: string | undefined) {
@@ -32,15 +35,12 @@ export function useBorradorCambio(id: string | undefined) {
 
 // --- Acciones --------------------------------------------------------------------
 
+/** Inicia el cambio en el backend real: crea el expediente sobre la concesión elegida. */
 export function useIniciarCambio() {
   const qc = useQueryClient()
-  const { estadosPendientes } = useDominio()
   return useMutation({
-    mutationFn: (form: InicioCambioForm) => cambioTitularidadApi.iniciar({ form, estadosPendientes }),
-    onSuccess: (borrador) => {
-      qc.setQueryData(cambioKeys.borrador(borrador.id), borrador)
-      void qc.invalidateQueries({ queryKey: cambioKeys.borradores() })
-    },
+    mutationFn: (form: InicioCambioForm) => cambioTitularidadApi.iniciar(form),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cambioKeys.enTramite() }),
   })
 }
 

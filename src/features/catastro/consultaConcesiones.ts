@@ -154,12 +154,16 @@ export function useOpcionesFiltros() {
   })
 }
 
-/** Mientras se escribe se sigue mostrando el resultado anterior (sin parpadeo). */
-export function useBuscarConcesiones(f: FiltrosConcesiones, pagina: number) {
+/**
+ * Mientras se escribe se sigue mostrando el resultado anterior (sin parpadeo).
+ * Con `f` en null no pide nada (el motor de búsqueda de los trámites espera a que se busque).
+ */
+export function useBuscarConcesiones(f: FiltrosConcesiones | null, pagina: number) {
   const params = Object.fromEntries(Object.entries({ ...f, pagina, porPagina: CONCESIONES_POR_PAGINA }).filter(([, v]) => v !== undefined && v !== ''))
   return useQuery({
     queryKey: ['backend', 'concesiones', 'buscar', params],
     queryFn: () => datos(backend.get<ResultadoConcesiones>('/concesiones/buscar', { params })),
+    enabled: f !== null,
     placeholderData: keepPreviousData,
   })
 }

@@ -5,7 +5,6 @@ import { InicioSobreConcesion } from '../../shared/components/InicioSobreConcesi
 import { SubdivisionEnCargaError } from '../api'
 import { SubdivisionesEnCurso } from '../components/SubdivisionesEnCurso'
 import { useIniciarSubdivision } from '../hooks'
-import { PASOS_SUBDIVISION } from '../pasos'
 
 /**
  * Paso 1 (Catastro), prototipo subdivision/busquedasubdivision.html: búsqueda de la
@@ -20,7 +19,6 @@ export default function InicioSubdivisionPage() {
       titulo="Subdivisión de Concesión - Inicio de Trámite"
       descripcion="Gestione la división de una concesión en dos o más fracciones. Busque el expediente y verifique los datos antes de iniciar el circuito."
       accion="la subdivisión"
-      pasos={PASOS_SUBDIVISION}
       onComenzar={async (values) => {
         const borrador = await iniciar.mutateAsync(values)
         navigate(ROUTES.tramites.subdivision.fracciones(borrador.id))
