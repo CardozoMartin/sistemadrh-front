@@ -9,6 +9,8 @@ import { cn } from '@/lib/cn'
 import { mensajeDeError } from '@/services/api/errors'
 import { Observaciones, Opciones } from '../../../AltaDeConcesion/components/circuito/AccionesOficina'
 import type { CambioBackend } from '../../backend.types'
+import { ResumenEnvio } from './ResumenEnvio'
+import type { Terminado } from './terminado'
 import { estadoDeudaPorTitular, faltaEnDecision, type DecisionDeuda, type EstadoDeudaTitular } from '../../recaudacion'
 import { useAntecedentesDeudaCambio, useBorradorAvisoCambio, useCursoConDeudaCambio, useNotificarDeudaCambio, useVerificarDeudaCambio } from '../../hooks'
 
@@ -24,7 +26,7 @@ const MINIMO_NOTA = 10
  *   - No apto (tiene deuda): se marca en qué concesión y el motivo; queda en espera en Recaudación.
  *     En espera se puede avisar al titular por correo o, si no se pudo cobrar, darle curso con una nota.
  */
-export function RecaudacionCambio({ datos, enEspera }: { datos: CambioBackend; enEspera: boolean }) {
+export function RecaudacionCambio({ datos, enEspera, onTerminado }: { datos: CambioBackend; enEspera: boolean; onTerminado: (t: Terminado) => void }) {
   const id = datos.expediente.id
   const antecedentes = useAntecedentesDeudaCambio(id)
   const verificar = useVerificarDeudaCambio(id)
@@ -47,11 +49,22 @@ export function RecaudacionCambio({ datos, enEspera }: { datos: CambioBackend; e
   function guardar() {
     setConfirmar(false)
     if (!decision || falta) return
-    verificar.mutate({
-      resultado: decision,
-      concesiones: concesiones.map((c) => ({ concesionId: c.id, tieneDeuda: tieneDeuda(c) })),
-      observaciones: observaciones.trim() || undefined,
-    })
+    const numero = datos.expediente.numero
+    verificar.mutate(
+      {
+        resultado: decision,
+        concesiones: concesiones.map((c) => ({ concesionId: c.id, tieneDeuda: tieneDeuda(c) })),
+        observaciones: observaciones.trim() || undefined,
+      },
+      {
+        onSuccess: () =>
+          onTerminado(
+            decision === 'APTO'
+              ? { titulo: 'Trámite enviado', mensaje: `El expediente ${numero} no posee deuda y fue enviado a ${SIGUIENTE}.` }
+              : { titulo: 'Quedó en espera por deuda', mensaje: `El expediente ${numero} queda en Recaudación hasta que se pague. Puede avisar al titular por correo.` },
+          ),
+      },
+    )
   }
 
   return (
@@ -182,18 +195,28 @@ export function RecaudacionCambio({ datos, enEspera }: { datos: CambioBackend; e
         message={
           decision === 'NO_APTO'
             ? 'El expediente queda en espera en Recaudación hasta que se pague. La deuda queda registrada en las concesiones marcadas.'
-            : `Se registra que no posee deuda y el expediente ${datos.expediente.numero} pasa a ${SIGUIENTE}.`
+            : 'Revise lo que se envía:'
         }
         confirmLabel={decision === 'NO_APTO' ? 'Sí, dejar en espera' : 'Sí, enviar'}
         cancelLabel="Cancelar"
         onConfirm={guardar}
         onCancel={() => setConfirmar(false)}
-      />
+      >
+        <ResumenEnvio
+          filas={[
+            ['Expediente', datos.expediente.numero],
+            ['Titulares', titulares.map((t) => t.nombre).join(' · ')],
+            ['¿Posee deuda?', decision === 'NO_APTO' ? `Sí: ${conDeuda.map((c) => `N° ${c.numero ?? c.id}`).join(', ') || 'deudas sin concesión'}` : 'No'],
+            ['Observaciones', observaciones.trim() || null],
+            ['Destino', decision === 'NO_APTO' ? 'Queda en espera en Recaudación' : SIGUIENTE],
+          ]}
+        />
+      </ConfirmDialog>
 
       {enEspera && (
         <>
           <AvisoDeudaCambio expedienteId={id} />
-          <CursoConDeudaCambio expedienteId={id} />
+          <CursoConDeudaCambio expedienteId={id} numero={datos.expediente.numero} onTerminado={onTerminado} />
         </>
       )}
     </div>
@@ -312,7 +335,7 @@ function AvisoDeudaCambio({ expedienteId }: { expedienteId: string }) {
 }
 
 /** En espera y no se pudo cobrar: pasa igual a Distrito con una nota de por qué (la deuda sigue registrada). */
-function CursoConDeudaCambio({ expedienteId }: { expedienteId: string }) {
+function CursoConDeudaCambio({ expedienteId, numero, onTerminado }: { expedienteId: string; numero: string; onTerminado: (t: Terminado) => void }) {
   const [abierto, setAbierto] = useState(false)
   const [nota, setNota] = useState('')
   const [confirmar, setConfirmar] = useState(false)
@@ -352,7 +375,9 @@ function CursoConDeudaCambio({ expedienteId }: { expedienteId: string }) {
         cancelLabel="Volver"
         onConfirm={() => {
           setConfirmar(false)
-          accion.mutate(nota.trim())
+          accion.mutate(nota.trim(), {
+            onSuccess: () => onTerminado({ titulo: 'Trámite enviado con deuda', mensaje: `El expediente ${numero} fue enviado a ${SIGUIENTE} con la deuda pendiente y su nota.` }),
+          })
         }}
         onCancel={() => setConfirmar(false)}
       />

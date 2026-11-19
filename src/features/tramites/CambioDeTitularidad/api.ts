@@ -62,4 +62,8 @@ export const cambioTitularidadApi = {
   /** El correo de cada titular con deuda (texto base), para revisarlo antes de enviarlo. */
   borradorAvisoDeuda: (expedienteId: string) => datos(backend.get<BorradorAvisoDeuda>(`${CAMBIO}/${expedienteId}/recaudacion/aviso-deuda`)),
   notificarDeuda: (expedienteId: string, dto: NotificarDeudaDto) => datos(backend.post<ResultadoAvisoDeuda>(`${CAMBIO}/${expedienteId}/recaudacion/notificar-deuda`, dto)),
+
+  // --- Distrito y Jurídico: apto / no apto (caso de uso, pasos 18-31) ---------------------
+  dictaminar: (expedienteId: string, oficina: 'distrito' | 'juridico', dto: { resultado: 'APTO' | 'NO_APTO'; observaciones?: string }) =>
+    datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/${oficina}`, dto)),
 }

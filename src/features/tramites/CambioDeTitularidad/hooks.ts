@@ -120,6 +120,8 @@ export const useTomarCambio = (id: string) => useAccionCambio<void, unknown>(id,
 export const useVerificarDeudaCambio = (id: string) => useAccionCambio(id, cambioTitularidadApi.verificarDeuda)
 export const useCursoConDeudaCambio = (id: string) => useAccionCambio(id, cambioTitularidadApi.cursoConDeuda)
 export const useNotificarDeudaCambio = (id: string) => useAccionCambio(id, cambioTitularidadApi.notificarDeuda)
+export const useDictaminarCambio = (id: string, oficina: 'distrito' | 'juridico') =>
+  useAccionCambio(id, (i, dto: { resultado: 'APTO' | 'NO_APTO'; observaciones?: string }) => cambioTitularidadApi.dictaminar(i, oficina, dto))
 
 /** Borrador del aviso de deuda: se pide al abrirlo y no se cachea (las deudas pueden cambiar). */
 export function useBorradorAvisoCambio(id: string, habilitado: boolean) {

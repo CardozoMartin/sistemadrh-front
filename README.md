@@ -220,10 +220,16 @@ ya usa el **backend real** (`api.ts`, `hooks.ts`, `backend.types.ts`); el circui
    la que se transfiere), con un resumen de deuda **por titular** —el dueño anterior y el nuevo, los dos se revisan—, y decide «posee deuda» sí/no con observaciones y confirmación. Sin deuda pasa a Distrito;
    con deuda queda en espera, donde puede avisar por correo (texto editable) o darle curso con deuda con una nota.
    Las reglas de la decisión están en `recaudacion.ts` (las mismas que valida el backend).
-5. **Pendiente:** Distrito → Jurídico → Secretaría → cierre en Catastro siguen en json-server
+   **Distrito** (`DictamenCambio`, pasos 18-24): con la ubicación de la concesión a la vista (y el visor), decide
+   «¿está apto?» sí/no con **observaciones técnicas obligatorias** (paso 20), confirmación con el resumen de lo que se envía y el
+   aviso «Trámite enviado». Apto: pasa a Jurídico; no apto: el
+   cambio se rechaza y la concesión sigue igual. Reglas en `dictamen.ts`; el mismo componente sirve para Jurídico.
+   Cada distrito ve solo sus expedientes (lo controla el backend: bandeja, lista y detalle); si alguien abre el de otro
+   distrito, la pantalla avisa «No puede ver este expediente».
+5. **Pendiente:** Jurídico → Secretaría → cierre en Catastro siguen en json-server
    (`GestionCambioTitularidadPage`, `etapas/`); en `CircuitoCambioPage` esas etapas muestran «todavía no disponible».
 6. **Tests** (`npm test`): `schemas.test.ts` (checklist, inicio, nuevo titular ≠ actual), `adaptadores.test.ts`
-   (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) y `recaudacion.test.ts` (decisión de deuda).
+   (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) `recaudacion.test.ts` (decisión de deuda) y `dictamen.test.ts` (apto / no apto).
 4. `EtapaCierreCambio` (`CatastroFinalizacion.html`) — **carga final del titular** con el N° de resolución. Solo se
    habilita si todas las oficinas aprobaron y hay resolución. Hasta acá la concesión sigue a nombre del titular
    actual (el nuevo es «propuesto»); al finalizar cambia y los anteriores quedan en `datos.titularesAnteriores`.

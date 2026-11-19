@@ -1,17 +1,24 @@
-import { useParams } from 'react-router'
+import type { ReactNode } from 'react'
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { RUTA_BANDEJA } from '@/config/routes'
 import { Alert, EmptyState, ErrorState, LoadingState } from '@/components/feedback/States'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { AvisoSoloConsulta, useActor } from '@/features/auth/useActor'
-import { esNoEncontrado, mensajeDeError } from '@/services/api/errors'
+import { esNoEncontrado, mensajeDeError, toApiError } from '@/services/api/errors'
 import { AvisoDeuda } from '../../AltaDeConcesion/components/circuito/AvisoDeuda'
 import { DondeEsta } from '../../AltaDeConcesion/components/circuito/DondeEsta'
 import { HistorialAlta } from '../../AltaDeConcesion/components/circuito/HistorialAlta'
 import type { CambioBackend } from '../backend.types'
 import { DatosTitularesCambio } from '../components/circuito/DatosTitularesCambio'
+import { DictamenCambio } from '../components/circuito/DictamenCambio'
 import { RecaudacionCambio } from '../components/circuito/RecaudacionCambio'
+import type { Terminado } from '../components/circuito/terminado'
+import { ROUTES } from '@/config/routes'
 import { useCambio, useTomarCambio } from '../hooks'
 
 const TITULO = 'Expediente de cambio de titularidad'
@@ -30,6 +37,9 @@ const TERMINADO: Record<string, string> = {
 export default function CircuitoCambioPage() {
   const { expedienteId } = useParams()
   const cambio = useCambio(expedienteId)
+  const navigate = useNavigate()
+  /** «Trámite enviado»: vive acá porque, al pasar de oficina, el panel de trabajo desaparece. */
+  const [terminado, setTerminado] = useState<(Terminado & { oficina: string }) | null>(null)
 
   if (cambio.isPending) {
     return (
@@ -45,6 +55,9 @@ export default function CircuitoCambioPage() {
         <PageHeader title={TITULO} />
         {esNoEncontrado(cambio.error) ? (
           <EmptyState icon="search_off" titulo="No se encontró el expediente" />
+        ) : toApiError(cambio.error).status === 403 ? (
+          // Ej: personal de un distrito que abre un expediente de otro distrito.
+          <EmptyState icon="lock" titulo="No puede ver este expediente" descripcion={toApiError(cambio.error).message} />
         ) : (
           <ErrorState error={cambio.error} onRetry={() => void cambio.refetch()} reintentando={cambio.isFetching} />
         )}
@@ -74,10 +87,11 @@ export default function CircuitoCambioPage() {
 
         {datos.avisoDeuda && <AvisoDeuda aviso={datos.avisoDeuda} />}
 
-        {c.estado === 'EN_TRAMITE' && <PanelOficina datos={datos} />}
+        {c.estado === 'EN_TRAMITE' && <PanelOficina datos={datos} onTerminado={(t) => setTerminado({ ...t, oficina: expediente.oficinaActual })} />}
 
         <Card className="p-6">
           <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">Verificación de datos</h2>
+          <UbicacionConcesion datos={datos} />
           <DatosTitularesCambio datos={datos} />
           <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
             Documentación presentada en Catastro: {c.documentacionPresentada.map((d) => d.descripcion).join(' · ') || 'no registrada'}.
@@ -89,12 +103,23 @@ export default function CircuitoCambioPage() {
           <HistorialAlta expedienteId={expediente.id} />
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={!!terminado}
+        tone="success"
+        title={terminado?.titulo ?? ''}
+        message={terminado?.mensaje ?? ''}
+        confirmLabel="Volver a la bandeja"
+        cancelLabel="Ver el expediente"
+        onConfirm={() => navigate(RUTA_BANDEJA[terminado!.oficina as keyof typeof RUTA_BANDEJA] ?? '/')}
+        onCancel={() => setTerminado(null)}
+      />
     </>
   )
 }
 
 /** Lo que tiene que hacer la oficina donde está el expediente (si es la del usuario). */
-function PanelOficina({ datos }: { datos: CambioBackend }) {
+function PanelOficina({ datos, onTerminado }: { datos: CambioBackend; onTerminado: (t: Terminado) => void }) {
   const actor = useActor()
   const { expediente } = datos
   const tomar = useTomarCambio(expediente.id)
@@ -107,8 +132,9 @@ function PanelOficina({ datos }: { datos: CambioBackend }) {
     )
   }
 
+  const panel = PANELES[expediente.etapa]
   // Las etapas que todavía no tienen pantalla en el sistema nuevo.
-  if (expediente.etapa !== 'RECAUDACION') {
+  if (!panel) {
     return (
       <Card className="p-6">
         <Alert tone="info">
@@ -122,17 +148,17 @@ function PanelOficina({ datos }: { datos: CambioBackend }) {
   return (
     <Card className="p-6">
       <div className="mb-4 flex items-center gap-2">
-        <Icon name="payments" className="text-primary" />
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Recaudación · Verificación de deuda</h2>
+        <Icon name={panel.icono} className="text-primary" />
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">{panel.titulo}</h2>
       </div>
       {loTengoYo ? (
-        <RecaudacionCambio datos={datos} enEspera={expediente.estado === 'EN_ESPERA'} />
+        panel.contenido(datos, onTerminado)
       ) : (
         <div className="flex flex-col items-start gap-3">
           <p className="text-sm text-slate-600 dark:text-slate-300">
             {expediente.tomadoPor
               ? `Lo tiene ${expediente.tomadoPor.nombre}. Para trabajarlo tiene que tomarlo usted (si la oficina lo permite).`
-              : 'Tome el expediente para verificar la deuda.'}
+              : `Tome el expediente para ${panel.accion}.`}
           </p>
           {tomar.error && <Alert>{mensajeDeError(tomar.error)}</Alert>}
           <Button iconLeft="pan_tool" loading={tomar.isPending} onClick={() => tomar.mutate()}>
@@ -141,5 +167,41 @@ function PanelOficina({ datos }: { datos: CambioBackend }) {
         </div>
       )}
     </Card>
+  )
+}
+
+/** Lo que hace cada oficina en su etapa. Las que no están acá todavía no tienen pantalla. */
+const PANELES: Record<string, { titulo: string; icono: string; accion: string; contenido: (d: CambioBackend, onTerminado: (t: Terminado) => void) => ReactNode }> = {
+  RECAUDACION: {
+    titulo: 'Recaudación · Verificación de deuda',
+    icono: 'payments',
+    accion: 'verificar la deuda',
+    contenido: (d, onTerminado) => <RecaudacionCambio datos={d} enEspera={d.expediente.estado === 'EN_ESPERA'} onTerminado={onTerminado} />,
+  },
+  DISTRITO: {
+    titulo: 'Jefatura de Distrito · Dictamen técnico',
+    icono: 'water_drop',
+    accion: 'dictaminar',
+    contenido: (d, onTerminado) => <DictamenCambio datos={d} oficina="distrito" onTerminado={onTerminado} />,
+  },
+}
+
+/** Dónde está la concesión (lo que mira Distrito para decidir), con acceso a la ficha en el visor. */
+function UbicacionConcesion({ datos }: { datos: CambioBackend }) {
+  const { concesion } = datos.cambio
+  const u = concesion.ubicacion
+  const texto = [u.localidad, u.departamento, u.distrito].filter(Boolean).join(' · ')
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm dark:bg-slate-900/40">
+      <span>
+        <span className="text-slate-500 dark:text-slate-400">Concesión N° {concesion.numero ?? concesion.id}: </span>
+        <strong className="text-slate-900 dark:text-white">{texto || 'ubicación no registrada'}</strong>
+        {concesion.padron && <span className="text-slate-500 dark:text-slate-400"> · Padrón {concesion.padron}</span>}
+      </span>
+      <a href={ROUTES.visorConcesion(concesion.id)} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline">
+        <Icon name="map" className="text-[18px]!" />
+        Ver en el visor
+      </a>
+    </div>
   )
 }

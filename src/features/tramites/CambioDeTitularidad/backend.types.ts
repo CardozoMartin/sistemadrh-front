@@ -54,7 +54,15 @@ export interface CambioBackend {
     id: string
     estado: EstadoCambio
     /** `padron`: padrón vinculado (el del inmueble vigente), para Recaudación (paso 14). */
-    concesion: { id: string; numero: string | null; estado: string; fechaOtorgamiento: string | null; padron: string | null }
+    concesion: {
+      id: string
+      numero: string | null
+      estado: string
+      fechaOtorgamiento: string | null
+      padron: string | null
+      /** Dónde está (inmueble vigente): lo que mira Distrito para decidir. */
+      ubicacion: { departamento: string | null; localidad: string | null; distrito: string | null }
+    }
     titularesActuales: PersonaCambio[]
     domiciliosActuales: DomicilioCambio[]
     nuevosTitulares: PersonaCambio[]
