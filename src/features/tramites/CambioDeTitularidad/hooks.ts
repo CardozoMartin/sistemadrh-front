@@ -123,6 +123,9 @@ export const useNotificarDeudaCambio = (id: string) => useAccionCambio(id, cambi
 export const useDictaminarCambio = (id: string, oficina: 'distrito' | 'juridico') =>
   useAccionCambio(id, (i, dto: { resultado: 'APTO' | 'NO_APTO'; observaciones?: string }) => cambioTitularidadApi.dictaminar(i, oficina, dto))
 
+/** Secretaría General: registra la resolución con su PDF y pasa a Catastro (verificación final). */
+export const useResolucionCambio = (id: string) => useAccionCambio(id, cambioTitularidadApi.resolucion)
+
 /** Borrador del aviso de deuda: se pide al abrirlo y no se cachea (las deudas pueden cambiar). */
 export function useBorradorAvisoCambio(id: string, habilitado: boolean) {
   return useQuery({ queryKey: [...cambioKeys.cambio(id), 'aviso-deuda'], queryFn: () => cambioTitularidadApi.borradorAvisoDeuda(id), enabled: habilitado, staleTime: 0, gcTime: 0 })

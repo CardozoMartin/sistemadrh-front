@@ -17,6 +17,7 @@ import type { CambioBackend } from '../backend.types'
 import { DatosTitularesCambio } from '../components/circuito/DatosTitularesCambio'
 import { DictamenCambio } from '../components/circuito/DictamenCambio'
 import { RecaudacionCambio } from '../components/circuito/RecaudacionCambio'
+import { ResolucionCambio, ResolucionCargada } from '../components/circuito/ResolucionCambio'
 import type { Terminado } from '../components/circuito/terminado'
 import { ROUTES } from '@/config/routes'
 import { useCambio, useTomarCambio } from '../hooks'
@@ -32,7 +33,7 @@ const TERMINADO: Record<string, string> = {
 /**
  * Un cambio de titularidad en el circuito de oficinas (backend real): dónde está, qué hace la
  * oficina que lo tiene, los datos del titular actual y del nuevo, y el historial completo.
- * Por ahora la oficina que trabaja acá es Recaudación; las demás etapas se van sumando.
+ * Etapas con pantalla: Recaudación, Distrito, Jurídico y Secretaría General.
  */
 export default function CircuitoCambioPage() {
   const { expedienteId } = useParams()
@@ -92,6 +93,11 @@ export default function CircuitoCambioPage() {
         <Card className="p-6">
           <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">Verificación de datos</h2>
           <UbicacionConcesion datos={datos} />
+          {c.resolucion && (
+            <div className="mb-4">
+              <ResolucionCargada datos={datos} />
+            </div>
+          )}
           <DatosTitularesCambio datos={datos} />
           <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
             Documentación presentada en Catastro: {c.documentacionPresentada.map((d) => d.descripcion).join(' · ') || 'no registrada'}.
@@ -189,6 +195,12 @@ const PANELES: Record<string, { titulo: string; icono: string; accion: string; c
     icono: 'gavel',
     accion: 'dictaminar',
     contenido: (d, onTerminado) => <DictamenCambio datos={d} oficina="juridico" onTerminado={onTerminado} />,
+  },
+  SECRETARIA_GENERAL: {
+    titulo: 'Secretaría General · Resolución',
+    icono: 'history_edu',
+    accion: 'cargar la resolución',
+    contenido: (d, onTerminado) => <ResolucionCambio datos={d} onTerminado={onTerminado} />,
   },
 }
 

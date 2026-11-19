@@ -66,4 +66,18 @@ export const cambioTitularidadApi = {
   // --- Distrito y Jurídico: apto / no apto (caso de uso, pasos 18-31) ---------------------
   dictaminar: (expedienteId: string, oficina: 'distrito' | 'juridico', dto: { resultado: 'APTO' | 'NO_APTO'; observaciones?: string }) =>
     datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/${oficina}`, dto)),
+
+  /** Secretaría General: la resolución (número, año, fecha de firma, observaciones) con el PDF escaneado. */
+  resolucion: (expedienteId: string, dto: { numero: string; anio: number; fecha: string; observaciones?: string; archivo: File }) => {
+    const form = new FormData()
+    form.append('numero', dto.numero)
+    form.append('anio', String(dto.anio))
+    form.append('fecha', dto.fecha)
+    if (dto.observaciones) form.append('observaciones', dto.observaciones)
+    form.append('archivo', dto.archivo)
+    // El cliente manda JSON por defecto: con multipart, axios arma el boundary solo.
+    return datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/resolucion`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }))
+  },
+  /** El PDF de la resolución (con la sesión: por eso no alcanza con un link). */
+  archivoResolucion: (expedienteId: string) => datos(backend.get<Blob>(`${CAMBIO}/${expedienteId}/resolucion/archivo`, { responseType: 'blob' })),
 }

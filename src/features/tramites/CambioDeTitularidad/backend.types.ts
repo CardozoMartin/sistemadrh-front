@@ -70,7 +70,8 @@ export interface CambioBackend {
     cargaCompleta: boolean
     /** Papeles del checklist que trajo el expediente al iniciar. */
     documentacionPresentada: { id: number; descripcion: string }[]
-    resolucion: { numero: string; fecha: string } | null
+    /** `numero` viene como «N/AAAA». `conArchivo`: hay PDF escaneado para descargar. */
+    resolucion: { numero: string; fecha: string; observaciones: string | null; conArchivo: boolean } | null
   }
   /** Recaudación le dio curso con deuda (null: pasó sin deuda o todavía no pasó). */
   avisoDeuda: AvisoDeudaBackend | null

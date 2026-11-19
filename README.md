@@ -229,10 +229,15 @@ ya usa el **backend real** (`api.ts`, `hooks.ts`, `backend.types.ts`); el circui
    **Jurídico** (pasos 25-31, versión preliminar): revisa la documentación presentada (`DocumentacionRevision`:
    el checklist con lo que trajo el expediente) y decide apto / no apto con el mismo `DictamenCambio` (observaciones
    opcionales, obligatorias si no apto), confirmación y «Trámite enviado». Apto: pasa a Secretaría General.
-5. **Pendiente:** Secretaría General → cierre en Catastro siguen en json-server
-   (`GestionCambioTitularidadPage`, `etapas/`); en `CircuitoCambioPage` esas etapas muestran «todavía no disponible».
+   **Secretaría General** (pasos 32-38, versión preliminar): `ResolucionCambio` carga número, fecha de firma (el año
+   sale de la fecha), el PDF escaneado (obligatorio, solo PDF, hasta 10 MB) y observaciones; confirmación con el resumen
+   y «Trámite finalizado en Secretaría»: pasa a Catastro para la verificación final. Reglas en `resolucion.ts`. El PDF va
+   por multipart (`cambioTitularidadApi.resolucion`) y se abre con «Ver PDF» (`ResolucionCargada`: se baja con la
+   sesión como blob, un link directo no lleva el token).
+5. **Pendiente:** la verificación final en Catastro sigue en json-server (`GestionCambioTitularidadPage`, `etapas/`);
+   en `CircuitoCambioPage` esa etapa muestra «todavía no disponible». El modo demo no emula la carga del PDF.
 6. **Tests** (`npm test`): `schemas.test.ts` (checklist, inicio, nuevo titular ≠ actual), `adaptadores.test.ts`
-   (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) `recaudacion.test.ts` (decisión de deuda) y `dictamen.test.ts` (apto / no apto).
+   (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) `recaudacion.test.ts` (decisión de deuda), `dictamen.test.ts` (apto / no apto) y `resolucion.test.ts` (datos y PDF de la resolución).
 4. `EtapaCierreCambio` (`CatastroFinalizacion.html`) — **carga final del titular** con el N° de resolución. Solo se
    habilita si todas las oficinas aprobaron y hay resolución. Hasta acá la concesión sigue a nombre del titular
    actual (el nuevo es «propuesto»); al finalizar cambia y los anteriores quedan en `datos.titularesAnteriores`.
