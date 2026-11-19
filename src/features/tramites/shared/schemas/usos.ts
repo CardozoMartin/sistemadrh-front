@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { coordenadaVacia, leerCoordenada, type CoordenadaForm } from '@/lib/coordenadas'
+import { fechaCorta, finDePeriodo } from '@/lib/fechas'
 
 /** Coordenada de un punto: X/Y POSGAR 2007 faja 3 o latitud/longitud (ver lib/coordenadas.ts). */
 const coordenadaSchema = z.object({
@@ -45,8 +46,11 @@ export function crearUsosSchema(usosConPuntoEntrega: string[]) {
       // El desagüe va solo en X/Y POSGAR faja 3 (regla compartida con el backend, lib/posgar-faja3.ts).
       coordenada('desague', { ...u.desague, sistema: 'posgar' }, 'del desagüe')
 
-      if (u.periodoInicio && u.periodoFin && u.periodoFin < u.periodoInicio) {
-        issue(['periodoFin'], 'El fin del período no puede ser anterior al inicio.')
+      // El período dura al menos 1 año (misma regla que el backend).
+      if (u.periodoInicio && u.periodoFin) {
+        const minimo = finDePeriodo(u.periodoInicio, 1)
+        if (u.periodoFin < u.periodoInicio) issue(['periodoFin'], 'El fin del período no puede ser anterior al inicio.')
+        else if (u.periodoFin < minimo) issue(['periodoFin'], `El período tiene que ser de al menos 1 año: el fin tiene que ser el ${fechaCorta(minimo)} o posterior.`)
       }
 
       if (!u.items.some((i) => i.uso)) issue(['items', 0, 'uso'], 'Seleccione al menos un uso.')

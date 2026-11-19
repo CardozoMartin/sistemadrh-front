@@ -5,7 +5,7 @@
 // refrescan el historial y las bandejas (el expediente cambió de oficina o de estado).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { altaConcesionApi } from './api'
-import type { AltaBackend, OficinaBackend } from './backend.types'
+import type { AltaBackend, NotificarDeudaDto, OficinaBackend } from './backend.types'
 
 export const altaKeys = {
   all: ['backend', 'altas'] as const,
@@ -137,6 +137,37 @@ export function useCancelarAlta() {
   })
 }
 
+/** Soltar desde la bandeja un alta tomada: vuelve a «sin revisar» y otro de la oficina la puede tomar. */
+export function useLiberarAlta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => altaConcesionApi.liberar(id),
+    onSuccess: (alta) => {
+      qc.setQueryData(altaKeys.alta(alta.id), alta)
+      void qc.invalidateQueries({ queryKey: altaKeys.historial(alta.id) })
+      void qc.invalidateQueries({ queryKey: altaKeys.bandejas() })
+    },
+  })
+}
+
+/** Usuarios de Catastro a los que el Jefe puede pasar el alta (null: no se pide). */
+export function useReasignables(id: string | null) {
+  return useQuery({ queryKey: [...altaKeys.all, 'reasignables', id], queryFn: () => altaConcesionApi.reasignables(id!), enabled: !!id })
+}
+
+/** Jefe de Catastro: pasa el alta a otro usuario de la oficina, con el motivo. */
+export function useReasignarAlta() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, usuarioId, observaciones }: { id: string; usuarioId: string; observaciones: string }) => altaConcesionApi.reasignar(id, usuarioId, observaciones),
+    onSuccess: (alta) => {
+      qc.setQueryData(altaKeys.alta(alta.id), alta)
+      void qc.invalidateQueries({ queryKey: altaKeys.historial(alta.id) })
+      void qc.invalidateQueries({ queryKey: altaKeys.bandejas() })
+    },
+  })
+}
+
 export function useTomar(id: string) {
   return useAccionAlta<void>(id, (i) => altaConcesionApi.tomar(i))
 }
@@ -158,11 +189,16 @@ export function useEmails(id: string) {
   return useQuery({ queryKey: altaKeys.emails(id), queryFn: () => altaConcesionApi.emails(id) })
 }
 
+/** Borrador del aviso de deuda (se pide al abrir el editor; siempre fresco). */
+export function useBorradorAvisoDeuda(id: string, habilitado: boolean) {
+  return useQuery({ queryKey: [...altaKeys.alta(id), 'aviso-deuda'], queryFn: () => altaConcesionApi.borradorAvisoDeuda(id), enabled: habilitado, staleTime: 0, gcTime: 0 })
+}
+
 /** Recaudación avisa la deuda por correo a los titulares: queda en el historial y en la lista de correos. */
 export function useNotificarDeuda(id: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (observaciones?: string) => altaConcesionApi.notificarDeuda(id, observaciones),
+    mutationFn: (dto: NotificarDeudaDto) => altaConcesionApi.notificarDeuda(id, dto),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: altaKeys.emails(id) })
       void qc.invalidateQueries({ queryKey: altaKeys.historial(id) })

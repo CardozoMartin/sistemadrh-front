@@ -1,94 +1,94 @@
-// Hooks de datos del Cambio de Titularidad (backend real): consultas (useQuery) y acciones
-// (useMutation). Las pantallas usan solo estos hooks; nunca llaman a la API directamente.
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { FiltrosConcesiones } from '@/features/catastro/consultaConcesiones'
-import { titularesADto } from '../AltaDeConcesion/adaptadores'
-import type { NuevoTitularForm } from './schemas'
-import { cambioTitularidadApi, type IniciarCambioDto } from './api'
-import type { CambioBackend } from './backend.types'
+// Hooks de datos del Cambio de Titularidad: consultas (useQuery) y acciones (useMutation).
+// Las pantallas usan solo estos hooks; nunca llaman a la API directamente.
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { Concesion } from '@/features/concesiones/datos'
+import { useDominio } from '@/hooks/useDominio'
+import { expedienteKeys } from '../../expedientes/hooks'
+import { cambioTitularidadApi } from './api'
+import type { InicioCambioForm, NuevoTitularForm } from './schemas'
+import type { BorradorCambioTitularidad } from './types'
 
 export const cambioKeys = {
-  all: ['backend', 'cambiosTitularidad'] as const,
-  checklist: () => [...cambioKeys.all, 'checklist'] as const,
-  enCurso: () => [...cambioKeys.all, 'en-curso'] as const,
-  cambio: (id: string) => [...cambioKeys.all, 'cambio', id] as const,
-  busqueda: (filtros: FiltrosConcesiones, pagina: number) => [...cambioKeys.all, 'busqueda', filtros, pagina] as const,
+  all: ['cambiosTitularidad'] as const,
+  borradores: () => [...cambioKeys.all, 'borradores'] as const,
+  /** Cambios en trámite del backend real. */
+  enTramite: () => ['backend', 'cambiosTitularidad', 'en-tramite'] as const,
+  borrador: (id: string) => [...cambioKeys.all, 'borrador', id] as const,
 }
-
-/** Resultados por página en la búsqueda de concesiones del inicio. */
-export const CONCESIONES_POR_PAGINA = 10
 
 // --- Consultas -----------------------------------------------------------------
 
-/** El checklist casi no cambia: se pide una vez por sesión. */
-export function useChecklistCambio() {
-  return useQuery({ queryKey: cambioKeys.checklist(), queryFn: cambioTitularidadApi.checklist, staleTime: Infinity })
+/** Cambios en trámite (backend real). */
+export function useCambiosEnTramite() {
+  return useQuery({ queryKey: cambioKeys.enTramite(), queryFn: cambioTitularidadApi.listarEnTramite })
 }
 
-/** Con `filtros` en null no pide nada: la lista arranca vacía hasta que el usuario busca. */
-export function useBuscarVigentes(filtros: FiltrosConcesiones | null, pagina: number) {
+export function useBorradorCambio(id: string | undefined) {
   return useQuery({
-    queryKey: cambioKeys.busqueda(filtros ?? {}, pagina),
-    queryFn: () => cambioTitularidadApi.buscarVigentes(filtros!, pagina, CONCESIONES_POR_PAGINA),
-    enabled: !!filtros,
-    placeholderData: keepPreviousData,
+    queryKey: cambioKeys.borrador(id ?? ''),
+    queryFn: () => cambioTitularidadApi.obtenerBorrador(id!),
+    enabled: !!id,
+    // El formulario se inicializa una sola vez con estos datos: no refrescar por detrás.
+    staleTime: Infinity,
   })
-}
-
-export function useCambiosEnCurso() {
-  return useQuery({ queryKey: cambioKeys.enCurso(), queryFn: () => cambioTitularidadApi.listar() })
-}
-
-export function useCambio(id: string | undefined) {
-  return useQuery({ queryKey: cambioKeys.cambio(id ?? ''), queryFn: () => cambioTitularidadApi.obtener(id!), enabled: !!id })
 }
 
 // --- Acciones --------------------------------------------------------------------
 
-/** Después de cada acción: el cambio actualizado a la caché y la lista, a refrescar. */
-function useAlActualizar() {
-  const qc = useQueryClient()
-  return (cambio: CambioBackend) => {
-    qc.setQueryData(cambioKeys.cambio(cambio.expediente.id), cambio)
-    void qc.invalidateQueries({ queryKey: cambioKeys.enCurso() })
-  }
-}
-
+/** Inicia el cambio en el backend real: crea el expediente sobre la concesión elegida. */
 export function useIniciarCambio() {
   const qc = useQueryClient()
-  const alActualizar = useAlActualizar()
   return useMutation({
-    mutationFn: (dto: IniciarCambioDto) => cambioTitularidadApi.iniciar(dto),
-    onSuccess: alActualizar,
-    // Aun si falla (ej: se cortó la respuesta), la lista se refresca: puede haberse creado igual.
-    onError: () => void qc.invalidateQueries({ queryKey: cambioKeys.enCurso() }),
+    mutationFn: (form: InicioCambioForm) => cambioTitularidadApi.iniciar(form),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cambioKeys.enTramite() }),
   })
 }
 
-/** El formulario del nuevo titular → cuerpo del PUT (el mismo que el alta). */
-const guardarPropuesta = (id: string, datos: NuevoTitularForm) => cambioTitularidadApi.guardarTitulares(id, titularesADto(datos.titulares, datos.domicilios))
-
-export function useGuardarTitularesCambio(id: string) {
-  const alActualizar = useAlActualizar()
+export function useGuardarDatosCambio(id: string) {
+  const qc = useQueryClient()
   return useMutation({
-    mutationFn: (datos: NuevoTitularForm) => guardarPropuesta(id, datos),
-    onSuccess: alActualizar,
-  })
-}
-
-/** Guarda la propuesta y la envía a Recaudación (dos pasos: el envío valida lo guardado). */
-export function useEnviarCambio(id: string) {
-  const alActualizar = useAlActualizar()
-  return useMutation({
-    mutationFn: async (datos: NuevoTitularForm) => {
-      await guardarPropuesta(id, datos)
-      return cambioTitularidadApi.enviar(id)
+    mutationFn: (datos: NuevoTitularForm) => cambioTitularidadApi.guardarDatos(id, datos),
+    onSuccess: (borrador) => {
+      qc.setQueryData(cambioKeys.borrador(id), borrador)
+      void qc.invalidateQueries({ queryKey: cambioKeys.borradores() })
     },
-    onSuccess: alActualizar,
   })
 }
 
-export function useCancelarCambio(id: string) {
-  const alActualizar = useAlActualizar()
-  return useMutation({ mutationFn: (motivo: string) => cambioTitularidadApi.cancelar(id, motivo), onSuccess: alActualizar })
+// Al eliminar/enviar no se toca la caché del detalle: la pantalla que lo muestra
+// navega a otro lado, y si se refrescara antes mostraría "no encontrado".
+
+export function useEliminarBorradorCambio() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => cambioTitularidadApi.eliminarBorrador(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: cambioKeys.borradores() }),
+  })
+}
+
+/** Envía el cambio a la siguiente oficina del circuito (etapas y usuario salen del dominio). */
+export function useEnviarCambio() {
+  const qc = useQueryClient()
+  const { etapas, usuarios } = useDominio()
+  return useMutation({
+    mutationFn: ({ borrador, datos, concesion }: { borrador: BorradorCambioTitularidad; datos: NuevoTitularForm; concesion: Concesion }) => {
+      const [etapaCarga, etapaSiguiente] = etapas
+      // TODO(login): usuario autenticado. Mientras tanto, el primer usuario de la oficina.
+      const usuario = usuarios.find((u) => u.oficinaId === etapaCarga?.oficinaId)
+      if (!etapaCarga || !etapaSiguiente || !usuario) throw new Error('El circuito de oficinas no está configurado en el sistema.')
+      return cambioTitularidadApi.enviar({
+        borrador,
+        datos,
+        concesion,
+        etapaId: etapaCarga.id,
+        oficinaOrigen: etapaCarga.oficinaId,
+        oficinaDestino: etapaSiguiente.oficinaId,
+        usuarioId: usuario.id,
+      })
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: cambioKeys.borradores() })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.all })
+    },
+  })
 }

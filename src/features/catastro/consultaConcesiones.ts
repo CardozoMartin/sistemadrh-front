@@ -154,22 +154,56 @@ export function useOpcionesFiltros() {
   })
 }
 
-/** Mientras se escribe se sigue mostrando el resultado anterior (sin parpadeo). */
-export function useBuscarConcesiones(f: FiltrosConcesiones, pagina: number) {
+/** Una columna que se puede elegir para la planilla (GET /concesiones/exportar/columnas). */
+export interface ColumnaExportable {
+  clave: string
+  titulo: string
+  /** PADRON: las de la planilla del sistema anterior; SISTEMA: las que agrega el sistema nuevo. */
+  grupo: 'PADRON' | 'SISTEMA'
+  porDefecto: boolean
+}
+
+/** Las columnas que se pueden exportar (fijas: se piden una vez, al abrir la exportación). */
+export function useColumnasExportables(habilitado: boolean) {
+  return useQuery({
+    queryKey: ['backend', 'concesiones', 'exportar', 'columnas'],
+    queryFn: () => datos(backend.get<ColumnaExportable[]>('/concesiones/exportar/columnas')),
+    staleTime: Infinity,
+    enabled: habilitado,
+  })
+}
+
+/** Qué lleva la planilla: las columnas de la hoja de concesiones y si van las hojas de detalle. */
+export interface OpcionesExportar {
+  columnas: string[]
+  detalle: boolean
+}
+
+/**
+ * Mientras se escribe se sigue mostrando el resultado anterior (sin parpadeo).
+ * Con `f` en null no pide nada (el motor de búsqueda de los trámites espera a que se busque).
+ */
+export function useBuscarConcesiones(f: FiltrosConcesiones | null, pagina: number) {
   const params = Object.fromEntries(Object.entries({ ...f, pagina, porPagina: CONCESIONES_POR_PAGINA }).filter(([, v]) => v !== undefined && v !== ''))
   return useQuery({
     queryKey: ['backend', 'concesiones', 'buscar', params],
     queryFn: () => datos(backend.get<ResultadoConcesiones>('/concesiones/buscar', { params })),
+    enabled: f !== null,
     placeholderData: keepPreviousData,
   })
 }
 
 /**
- * Descarga la planilla Excel con TODAS las concesiones que cumplen los filtros (no solo la página)
- * y todos sus detalles. Si el backend responde un error, se lanza con su mensaje.
+ * Descarga la planilla Excel con TODAS las concesiones que cumplen los filtros (no solo la página),
+ * con las columnas elegidas y, si se pide, las hojas de detalle. Si el backend responde un error,
+ * se lanza con su mensaje.
  */
-export async function exportarConcesiones(f: FiltrosConcesiones): Promise<void> {
-  const params = Object.fromEntries(Object.entries(f).filter(([, v]) => v !== undefined && v !== ''))
+export async function exportarConcesiones(f: FiltrosConcesiones, opciones: OpcionesExportar): Promise<void> {
+  const params = {
+    ...Object.fromEntries(Object.entries(f).filter(([, v]) => v !== undefined && v !== '')),
+    columnas: opciones.columnas.join(','),
+    detalle: opciones.detalle ? 'SI' : 'NO',
+  }
   // La respuesta es un archivo: el error también llega como archivo y se lee acá (no en el interceptor).
   const r = await backend.get<Blob>('/concesiones/exportar', { params, responseType: 'blob', timeout: 120000, validateStatus: () => true })
   if (r.status !== 200) {

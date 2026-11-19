@@ -16,11 +16,18 @@ export const inicioSobreConcesionSchema = z
     concesionId: z.string().min(1, 'Seleccione la concesión.'),
     expediente: expedienteSchema,
   })
-  .transform(({ concesionId, expediente }) => ({ concesionId, numeroExpediente: formatearExpediente(expediente) }))
+  .transform(({ concesionId, expediente }) => ({
+    concesionId,
+    numeroExpediente: formatearExpediente(expediente),
+    /** Las tres partes, como las pide el backend real ({ numero, reparticion, anio }). */
+    expediente: { numero: expediente.numero, reparticion: expediente.reparticion, anio: Number(expediente.anio) },
+  }))
 
 /** Lo que se edita en el diálogo (expediente en tres campos). */
 export type InicioSobreConcesionCampos = z.input<typeof inicioSobreConcesionSchema>
-export type InicioSobreConcesionForm = z.output<typeof inicioSobreConcesionSchema>
+/** `expediente` (las tres partes) viene del diálogo; las pantallas que rearman el inicio desde la URL solo tienen el número completo. */
+export type InicioSobreConcesionForm = Omit<z.output<typeof inicioSobreConcesionSchema>, 'expediente'> &
+  Partial<Pick<z.output<typeof inicioSobreConcesionSchema>, 'expediente'>>
 
 export interface InicioSobreConcesionInput {
   numeroExpediente: string

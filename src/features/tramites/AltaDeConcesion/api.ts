@@ -5,6 +5,7 @@
 // El backend valida todo (etapa, oficina, que el expediente esté tomado, duplicados…) y
 // devuelve el mensaje de error listo para mostrar.
 import { backend } from '@/services/api/backend'
+import type { BorradorAvisoDeuda, NotificarDeudaDto, UsuarioReasignable } from './backend.types'
 import type { AltaBackend, AntecedentesDeuda, AuditoriaExpediente, DeudaBackend, DisponibilidadExpediente, EmailExpediente, EntradaHistorial, ExpedienteEnBandeja, OficinaBackend, ResultadoAvisoDeuda, SituacionLegalBackend } from './backend.types'
 
 const ALTA = '/tramites/alta-concesion'
@@ -49,6 +50,12 @@ export const altaConcesionApi = {
   // --- Circuito ------------------------------------------------------------------
   /** Catastro cancela un alta iniciada por error (antes de enviarla): queda anulada y el número se libera. */
   cancelar: (id: string, observaciones: string) => datos(backend.post<AltaBackend>(`${ALTA}/${id}/cancelar`, { observaciones })),
+  /** Suelta el alta tomada: vuelve a «sin revisar» de la oficina (quien la tiene, o el Jefe de Catastro). */
+  liberar: (id: string) => datos(backend.post<AltaBackend>(`${ALTA}/${id}/liberar`)),
+  /** Jefe de Catastro: usuarios de Catastro a los que se puede pasar el alta. */
+  reasignables: (id: string) => datos(backend.get<UsuarioReasignable[]>(`${ALTA}/${id}/reasignables`)),
+  /** Jefe de Catastro: pasa el alta a otro usuario, con el motivo (queda en el historial). */
+  reasignar: (id: string, usuarioId: string, observaciones: string) => datos(backend.post<AltaBackend>(`${ALTA}/${id}/reasignar`, { usuarioId, observaciones })),
   enviar: (id: string, observaciones?: string) => datos(backend.post<AltaBackend>(`${ALTA}/${id}/enviar`, { observaciones })),
   reenviar: (id: string, observaciones?: string) => datos(backend.post<AltaBackend>(`${ALTA}/${id}/reenviar`, { observaciones })),
   /** Concesiones otorgadas de los titulares y si tienen deuda (lo que verifica Recaudación). */
@@ -73,7 +80,9 @@ export const altaConcesionApi = {
   auditoria: (id: string) => datos(backend.get<AuditoriaExpediente>(`/expedientes/${id}/auditoria`)),
   emails: (id: string) => datos(backend.get<EmailExpediente[]>(`/expedientes/${id}/emails`)),
   /** Recaudación: un correo a cada titular con deuda (solo informa en qué concesión, sin montos). */
-  notificarDeuda: (id: string, observaciones?: string) => datos(backend.post<ResultadoAvisoDeuda>(`${ALTA}/${id}/recaudacion/notificar-deuda`, { observaciones })),
+  /** El correo de cada titular con deuda (texto base), para revisarlo y editarlo antes de enviarlo. */
+  borradorAvisoDeuda: (id: string) => datos(backend.get<BorradorAvisoDeuda>(`${ALTA}/${id}/recaudacion/aviso-deuda`)),
+  notificarDeuda: (id: string, dto: NotificarDeudaDto) => datos(backend.post<ResultadoAvisoDeuda>(`${ALTA}/${id}/recaudacion/notificar-deuda`, dto)),
   bandeja: (oficina: OficinaBackend) => datos(backend.get<ExpedienteEnBandeja[]>(`/expedientes/bandeja/${oficina}`)),
 
   // --- Deudas (Recaudación) -----------------------------------------------------------

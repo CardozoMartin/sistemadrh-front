@@ -20,6 +20,7 @@ const ACTUACION: Record<string, string> = {
   PADRON: 'Cargó el padrón de Rentas',
   PUBLICACION_MAPA: 'Publicación en el mapa (Argenmap)',
   CANCELACION: 'Canceló el trámite (iniciado por error)',
+  REASIGNACION: 'Reasignó el expediente a otro usuario',
   CORRECCION_DATOS: 'Corrección de datos',
   // Baja de pozo (el historial es el mismo para cualquier expediente)
   DOCUMENTACION: 'Control de documentación',
