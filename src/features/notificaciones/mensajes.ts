@@ -28,7 +28,7 @@ export function describirEvento(e: EventoExpediente, d: DominioContextValue): Me
     case 'solicitud_numero':
       return {
         titulo: `${e.oficinaOrigenId ? d.nombreOficina(e.oficinaOrigenId) : oficina} pide número de concesión`,
-        detalle: `Expediente ${numero} · ${tramite}`,
+        detalle: `Expediente ${numero} · ${tramite}${e.usuarioNombre ? ` · lo pidió ${e.usuarioNombre}` : ''}`,
         icon: 'pin',
         oficina: oficinaNumeros,
       }

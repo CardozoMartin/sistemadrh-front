@@ -3,6 +3,8 @@ import { BandejaRegistrosPozo } from '@/features/pozo/CircuitoPozo/components/Ba
 import { BandejaExpedientes } from '@/features/expedientes/components/BandejaExpedientes'
 import { USA_JSON_SERVER } from '@/services/demo/modo'
 import { SolicitudesNumeroPanel } from '../components/SolicitudesNumeroPanel'
+import { PedidosNumeroPanel } from '../components/PedidosNumeroPanel'
+import { PendientesPadronPanel } from '../components/PendientesPadronPanel'
 
 /**
  * Bandeja de Catastro: expedientes en la oficina, sin revisar y pendientes (altas en carga, en corrección o en el cierre),
@@ -11,10 +13,11 @@ import { SolicitudesNumeroPanel } from '../components/SolicitudesNumeroPanel'
 export default function BandejaCatastroPage() {
   return (
     <BandejaOficina oficina="catastro">
+      {/* Pedidos de N° de concesión de Secretaría General, arriba de todo: frenan la resolución. */}
+      {USA_JSON_SERVER ? <SolicitudesNumeroPanel /> : <PedidosNumeroPanel />}
       <BandejaExpedientes oficina="catastro" />
+      {!USA_JSON_SERVER && <PendientesPadronPanel />}
       <BandejaRegistrosPozo oficina="catastro" />
-      {/* Los pedidos de N° todavía leen de json-server: en el modo real, el N° se asigna desde el expediente. */}
-      {USA_JSON_SERVER && <SolicitudesNumeroPanel />}
     </BandejaOficina>
   )
 }

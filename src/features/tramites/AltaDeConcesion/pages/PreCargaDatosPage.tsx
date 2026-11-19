@@ -27,6 +27,11 @@ type Dialogo = 'enviar' | null
 const TITULO = 'Alta de Concesión — Carga de datos'
 /** Etapas en las que Catastro puede editar (las mismas que valida el backend). */
 const EDITABLES = ['CARGA', 'CORRECCION', 'CIERRE']
+/**
+ * Secciones que en el cierre no se modifican en absoluto (las aprobó la resolución): se muestran
+ * solo para consultar y no se mandan al backend, que rechaza cualquier guardado de ellas.
+ */
+const FIJAS_EN_CIERRE: InfoSeccion['key'][] = ['usos']
 
 export default function PreCargaDatosPage() {
   const navigate = useNavigate()
@@ -158,6 +163,7 @@ function CargaDatos({ alta }: { alta: AltaBackend }) {
 
   const seccion = SECCIONES[actual]
   const esUltima = actual === ultima
+  const seccionFija = etapa === 'CIERRE' && FIJAS_EN_CIERRE.includes(seccion.key)
   const ocupado = guardar.isPending || derivar.isPending
   const errorMutacion = guardar.error ?? derivar.error
 
@@ -173,6 +179,11 @@ function CargaDatos({ alta }: { alta: AltaBackend }) {
 
   /** Valida y guarda la sección actual. Devuelve false si no se pudo. */
   async function guardarActual(): Promise<boolean> {
+    // En el cierre, lo que aprobó la resolución no se guarda (no cambió: solo se consultó).
+    if (seccionFija) {
+      guardar.reset()
+      return true
+    }
     const valida = await form.trigger(seccion.campos, { shouldFocus: true })
     if (!valida) return false
     try {
@@ -242,7 +253,19 @@ function CargaDatos({ alta }: { alta: AltaBackend }) {
             extra={<AvisoObligatorios />}
           />
           <form noValidate onSubmit={(e) => void terminar(e)} className="p-6 md:p-8">
-            <seccion.Component />
+            {seccionFija ? (
+              <>
+                <Alert tone="info">
+                  Los usos, el caudal y los puntos de desagüe y entrega quedaron aprobados en la resolución: en el cierre se muestran solo para consultar y no se modifican.
+                </Alert>
+                {/* fieldset disabled: todos los campos y botones de la sección quedan de solo lectura. */}
+                <fieldset disabled className="mt-6 min-w-0">
+                  <seccion.Component />
+                </fieldset>
+              </>
+            ) : (
+              <seccion.Component />
+            )}
           </form>
 
           {avisos.map((a) => (
@@ -270,7 +293,7 @@ function CargaDatos({ alta }: { alta: AltaBackend }) {
                 </Button>
               ) : (
                 <Button size="sm" iconRight="arrow_forward" loading={guardar.isPending} disabled={ocupado} onClick={() => void siguiente()}>
-                  {guardar.isPending ? 'Guardando…' : 'Guardar y seguir'}
+                  {guardar.isPending ? 'Guardando…' : seccionFija ? 'Seguir' : 'Guardar y seguir'}
                 </Button>
               )}
             </div>

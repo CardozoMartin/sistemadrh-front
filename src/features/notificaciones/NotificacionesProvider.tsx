@@ -58,6 +58,10 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
 
   const marcarTodasLeidas = useCallback(() => setNotificaciones((prev) => prev.map((n) => (n.leida ? n : { ...n, leida: true }))), [])
   const limpiarNotificaciones = useCallback(() => setNotificaciones([]), [])
+  const agregarNotificacion = useCallback(
+    (evento: EventoExpediente) => setNotificaciones((prev) => [{ id: nuevoId(), evento, leida: false }, ...prev].slice(0, MAX_NOTIFICACIONES)),
+    [],
+  )
   const marcarBandejaVista = useCallback((oficina: Oficina) => setVistos((prev) => ({ ...prev, [oficina]: new Date().toISOString() })), [])
 
   const value = useMemo(
@@ -67,13 +71,14 @@ export function NotificacionesProvider({ children }: { children: ReactNode }) {
       noLeidas: notificaciones.filter((n) => !n.leida).length,
       marcarTodasLeidas,
       limpiarNotificaciones,
+      agregarNotificacion,
       avisos,
       mostrarAviso,
       cerrarAviso,
       vistos,
       marcarBandejaVista,
     }),
-    [estadoConexion, notificaciones, marcarTodasLeidas, limpiarNotificaciones, avisos, mostrarAviso, cerrarAviso, vistos, marcarBandejaVista],
+    [estadoConexion, notificaciones, marcarTodasLeidas, limpiarNotificaciones, agregarNotificacion, avisos, mostrarAviso, cerrarAviso, vistos, marcarBandejaVista],
   )
 
   return (
