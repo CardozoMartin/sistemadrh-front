@@ -1,0 +1,91 @@
+// Respuestas del backend real para el Cambio de Titularidad (GET /tramites/cambio-titularidad…).
+// Mismos nombres que devuelve el backend (src/tramites/cambio-titularidad/cambio-titularidad.service.ts).
+import type { Oficina } from '@/types/domain'
+
+/** Una persona (titular actual o propuesto). Los datos sensibles pueden venir ocultos según el permiso. */
+export interface PersonaCambio {
+  personaId: string
+  nombreCompleto: string
+  tipoPersona: 'FISICA' | 'JURIDICA'
+  tipoDocumento: 'DNI' | 'CUIL' | 'CUIT' | null
+  documento: string | null
+  apellido: string | null
+  nombre: string | null
+  fechaNacimiento: string | null
+  razonSocial: string | null
+  fechaConstitucion: string | null
+  email: string | null
+  telefono: string | null
+}
+
+/** Domicilio legal: nombres del catálogo y código del distrito (los mismos valores que el formulario). */
+export interface DomicilioCambio {
+  calle: string | null
+  numero: string | null
+  departamento: string | null
+  localidad: string | null
+  distrito: string | null
+}
+
+export type EstadoCambio = 'EN_TRAMITE' | 'FINALIZADO' | 'RECHAZADO' | 'ANULADO'
+
+/** Dónde está el expediente (resumen común a todos los trámites). */
+export interface ResumenExpediente {
+  id: string
+  numero: string
+  tipoTramite: string
+  estado: string
+  etapa: string
+  etapaNombre: string
+  oficinaActual: string
+  oficinaNombre: string
+  tomadoPor: { id: string; nombre: string } | null
+  tomadoEn: string | null
+}
+
+/** GET /tramites/cambio-titularidad/:id (y lo que devuelve cada acción). */
+export interface CambioBackend {
+  expediente: ResumenExpediente
+  cambio: {
+    id: string
+    estado: EstadoCambio
+    concesion: { id: string; numero: string | null; estado: string; fechaOtorgamiento: string | null }
+    titularesActuales: PersonaCambio[]
+    domiciliosActuales: DomicilioCambio[]
+    nuevosTitulares: PersonaCambio[]
+    nuevosDomicilios: DomicilioCambio[]
+    cargaCompleta: boolean
+    /** Papeles del checklist que trajo el expediente al iniciar. */
+    documentacionPresentada: { id: number; descripcion: string }[]
+    resolucion: { numero: string; fecha: string } | null
+  }
+  avisoDeuda: unknown
+}
+
+/** GET /tramites/cambio-titularidad: un cambio en trámite. */
+export interface CambioEnLista {
+  expedienteId: string
+  expediente: string
+  concesion: { id: string; numero: string | null }
+  estado: EstadoCambio
+  etapa: string
+  oficinaActual: Oficina
+  nuevoTitular: string | null
+  creadoEn: string
+}
+
+/** GET /catalogos/documentos/CAMBIO_TITULARIDAD: un papel del checklist (solo los activos). */
+export interface DocumentoChecklist {
+  id: number
+  tipoTramite: 'CAMBIO_TITULARIDAD'
+  descripcion: string
+  obligatorio: boolean
+  orden: number
+  activo: boolean
+}
+
+/** Etapas en las que Catastro edita la propuesta: la carga y la corrección de lo observado (igual que el backend). */
+const ETAPAS_DE_CARGA = ['CARGA', 'CORRECCION']
+
+/** Catastro todavía puede editar (o «Continuar») la propuesta del cambio. */
+export const estaEnCarga = (estado: EstadoCambio, etapa: string) => estado === 'EN_TRAMITE' && ETAPAS_DE_CARGA.includes(etapa)

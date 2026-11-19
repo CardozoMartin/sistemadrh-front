@@ -1,53 +1,48 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ROUTES } from '@/config/routes'
 import { formatearFecha } from '@/config/expedientes'
-import { Alert, EmptyState, ErrorState, LoadingState } from '@/components/feedback/States'
+import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/States'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { mensajeDeError } from '@/services/api/errors'
-import { useBorradoresCambio, useEliminarBorradorCambio } from '../hooks'
-import type { BorradorCambioTitularidad } from '../types'
+import { useDominio } from '@/hooks/useDominio'
+import { estaEnCarga } from '../backend.types'
+import { useCambiosEnCurso } from '../hooks'
 
-/** Cambios de titularidad iniciados en Catastro que todavía no se enviaron a Recaudación. */
+/** Cambios de titularidad en trámite (backend real): los que están en carga se pueden continuar. */
 export function CambiosEnCurso() {
   const navigate = useNavigate()
-  const borradores = useBorradoresCambio()
-  const eliminar = useEliminarBorradorCambio()
-  const [aDescartar, setADescartar] = useState<BorradorCambioTitularidad | null>(null)
+  const { nombreOficina } = useDominio()
+  const cambios = useCambiosEnCurso()
 
   function contenido() {
-    if (borradores.isPending) return <LoadingState mensaje="Cargando cambios en carga…" className="py-8" />
-    if (borradores.isError) {
-      return <ErrorState error={borradores.error} onRetry={() => void borradores.refetch()} reintentando={borradores.isFetching} className="py-8" />
-    }
-    if (borradores.data.length === 0) {
-      return <EmptyState icon="task_alt" titulo="No hay cambios en carga" descripcion="Los cambios iniciados y no enviados aparecerán acá." className="py-8" />
+    if (cambios.isPending) return <LoadingState mensaje="Cargando cambios en trámite…" className="py-8" />
+    if (cambios.isError) return <ErrorState error={cambios.error} onRetry={() => void cambios.refetch()} reintentando={cambios.isFetching} className="py-8" />
+    if (cambios.data.length === 0) {
+      return <EmptyState icon="task_alt" titulo="No hay cambios en trámite" descripcion="Los cambios iniciados aparecerán acá hasta que finalicen." className="py-8" />
     }
     return (
       <ul className="divide-y divide-slate-200 dark:divide-slate-700">
-        {borradores.data.map((b) => (
-          <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-            <div className="min-w-0">
-              <p className="font-semibold text-slate-900 dark:text-white">
-                Expediente {b.numeroExpediente} · Concesión {b.numeroConcesion}
-              </p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Titular actual: {b.titularActual} · {b.datos ? 'Nuevo titular en carga' : 'Falta cargar el nuevo titular'} · Actualizado{' '}
-                {formatearFecha(b.actualizado)}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" iconLeft="delete" onClick={() => setADescartar(b)}>
-                Descartar
-              </Button>
-              <Button size="sm" iconRight="arrow_forward" onClick={() => navigate(ROUTES.tramites.cambioTitularidad.datos(b.id))}>
-                Continuar
-              </Button>
-            </div>
-          </li>
-        ))}
+        {cambios.data.map((c) => {
+          const enCarga = estaEnCarga(c.estado, c.etapa)
+          return (
+            <li key={c.expedienteId} className="flex flex-wrap items-center justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900 dark:text-white">
+                  Expediente {c.expediente} · Concesión {c.concesion.numero ?? c.concesion.id}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {c.nuevoTitular ? `Nuevo titular: ${c.nuevoTitular}` : 'Falta cargar el nuevo titular'} · En {nombreOficina(c.oficinaActual)} · Iniciado{' '}
+                  {formatearFecha(c.creadoEn)}
+                </p>
+              </div>
+              {enCarga && (
+                <Button size="sm" iconRight="arrow_forward" onClick={() => navigate(ROUTES.tramites.cambioTitularidad.datos(c.expedienteId))}>
+                  Continuar
+                </Button>
+              )}
+            </li>
+          )
+        })}
       </ul>
     )
   }
@@ -55,25 +50,10 @@ export function CambiosEnCurso() {
   return (
     <Card className="p-6 md:p-8">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Cambios en carga</h2>
-        {borradores.isFetching && !borradores.isPending && <span className="text-xs text-slate-400">Actualizando…</span>}
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">Cambios en trámite</h2>
+        {cambios.isFetching && !cambios.isPending && <span className="text-xs text-slate-400">Actualizando…</span>}
       </div>
-      {eliminar.isError && <Alert className="mb-4">{mensajeDeError(eliminar.error)}</Alert>}
       {contenido()}
-
-      <ConfirmDialog
-        open={!!aDescartar}
-        tone="danger"
-        title="¿Descartar este cambio de titularidad?"
-        message={`Se eliminará la carga del expediente ${aDescartar?.numeroExpediente ?? ''} y los datos ingresados.`}
-        confirmLabel="Sí, descartar"
-        cancelLabel="Volver"
-        onCancel={() => setADescartar(null)}
-        onConfirm={() => {
-          if (aDescartar) eliminar.mutate(aDescartar.id)
-          setADescartar(null)
-        }}
-      />
     </Card>
   )
 }

@@ -2,11 +2,26 @@ import { z } from 'zod'
 import { mismaPersona } from '@/features/concesiones/datos'
 // Schemas directos (no el barril '../shared') para no arrastrar el mapa a la página de inicio.
 import { domicilioSchema, domicilioVacio } from '../shared/schemas/domicilio'
+import { expedienteSchema } from '../shared/schemas/expediente'
 import { titularSchema, titularVacio } from '../shared/schemas/titular'
+import type { DocumentoChecklist } from './backend.types'
 
-// --- Paso 1: concesión encontrada + expediente asignado (común a los trámites sobre una concesión)
+// --- Paso 1: concesión elegida + expediente en papel + checklist de documentación ----------
 
-export { inicioSobreConcesionSchema as inicioCambioSchema, type InicioSobreConcesionForm as InicioCambioForm } from '../shared/inicioSobreConcesion'
+export const inicioCambioSchema = z.object({
+  /** Id de la concesión vigente (de la búsqueda del backend). */
+  concesionId: z.string().min(1, 'Seleccione la concesión.'),
+  expediente: expedienteSchema,
+  /** Ids de los papeles del checklist que trae el expediente. */
+  documentacionPresentada: z.array(z.number()),
+})
+
+export type InicioCambioForm = z.infer<typeof inicioCambioSchema>
+
+/** Papeles obligatorios sin marcar (el backend controla lo mismo: flujo alterno 4.1). */
+export function faltantesDelChecklist<T extends Pick<DocumentoChecklist, 'id' | 'obligatorio'>>(checklist: T[], marcados: number[]): T[] {
+  return checklist.filter((d) => d.obligatorio && !marcados.includes(d.id))
+}
 
 // --- Paso 2: datos del nuevo titular --------------------------------------------------
 
