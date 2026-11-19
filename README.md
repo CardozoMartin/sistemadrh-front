@@ -213,10 +213,17 @@ ya usa el **backend real** (`api.ts`, `hooks.ts`, `backend.types.ts`); el circui
    con lo guardado (el distrito viaja por código).
 3. `CambiosEnCurso` — los cambios en trámite (`GET /tramites/cambio-titularidad`): dónde está cada uno y
    «Continuar» los que siguen en carga. Pide el permiso `TITULARIDAD_GESTIONAR`.
-4. **Pendiente:** el circuito (Recaudación → Distrito → Jurídico → Secretaría → cierre en Catastro) sigue en
-   json-server (`GestionCambioTitularidadPage`, `etapas/`). Recaudación verifica la deuda del titular actual **y** del nuevo.
-5. **Tests** (`npm test`): `schemas.test.ts` (checklist, inicio, nuevo titular ≠ actual), `adaptadores.test.ts`
-   (backend ↔ formulario) y `errores.test.ts` (qué error va junto al número).
+4. `CircuitoCambioPage` (ruta `circuito/:expedienteId`, se entra desde la bandeja de la oficina) — dónde está el
+   expediente, los datos del titular actual y del nuevo lado a lado (DNI, CUIT/CUIL, correo, padrón vinculado,
+   domicilio fiscal: `DatosTitularesCambio`), la documentación presentada y el historial. **Recaudación**
+   (`RecaudacionCambio`, pasos 11-17): toma el expediente, ve las concesiones del titular actual y del nuevo (incluida
+   la que se transfiere), con un resumen de deuda **por titular** —el dueño anterior y el nuevo, los dos se revisan—, y decide «posee deuda» sí/no con observaciones y confirmación. Sin deuda pasa a Distrito;
+   con deuda queda en espera, donde puede avisar por correo (texto editable) o darle curso con deuda con una nota.
+   Las reglas de la decisión están en `recaudacion.ts` (las mismas que valida el backend).
+5. **Pendiente:** Distrito → Jurídico → Secretaría → cierre en Catastro siguen en json-server
+   (`GestionCambioTitularidadPage`, `etapas/`); en `CircuitoCambioPage` esas etapas muestran «todavía no disponible».
+6. **Tests** (`npm test`): `schemas.test.ts` (checklist, inicio, nuevo titular ≠ actual), `adaptadores.test.ts`
+   (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) y `recaudacion.test.ts` (decisión de deuda).
 4. `EtapaCierreCambio` (`CatastroFinalizacion.html`) — **carga final del titular** con el N° de resolución. Solo se
    habilita si todas las oficinas aprobaron y hay resolución. Hasta acá la concesión sigue a nombre del titular
    actual (el nuevo es «propuesto»); al finalizar cambia y los anteriores quedan en `datos.titularesAnteriores`.

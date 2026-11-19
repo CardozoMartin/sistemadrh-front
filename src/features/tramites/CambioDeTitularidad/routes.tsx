@@ -1,6 +1,6 @@
 import { Outlet, type RouteObject } from 'react-router'
 import { lazyPage } from '@/app/lazyPage'
-import { RutaConPermiso } from '@/features/auth/components/RutaDeOficina'
+import { RutaConPermiso, RutaDeOficina } from '@/features/auth/components/RutaDeOficina'
 
 export const cambioDeTitularidadRoute: RouteObject = {
   path: 'cambio-titularidad',
@@ -22,11 +22,26 @@ export const cambioDeTitularidadRoute: RouteObject = {
         },
       ],
     },
-    // Circuito: Recaudación → Distrito → Jurídico → Secretaría General → cierre en Catastro
+    // Circuito en el backend real: dónde está, qué hace la oficina que lo tiene (hoy: Recaudación) e historial.
     {
-      path: 'expediente/:expedienteId',
+      path: 'circuito/:expedienteId',
       handle: { crumb: 'Expediente' },
-      lazy: lazyPage(() => import('./pages/GestionCambioTitularidadPage')),
+      lazy: lazyPage(() => import('./pages/CircuitoCambioPage')),
+    },
+    // Circuito viejo de json-server (solo dev:mock / demo): como antes, solo Catastro.
+    {
+      element: (
+        <RutaDeOficina oficina="catastro">
+          <Outlet />
+        </RutaDeOficina>
+      ),
+      children: [
+        {
+          path: 'expediente/:expedienteId',
+          handle: { crumb: 'Expediente' },
+          lazy: lazyPage(() => import('./pages/GestionCambioTitularidadPage')),
+        },
+      ],
     },
   ],
 }

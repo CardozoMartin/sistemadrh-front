@@ -8,7 +8,7 @@ const cambio = (nuevos: Partial<CambioBackend['cambio']> = {}): CambioBackend =>
   cambio: {
     id: '1',
     estado: 'EN_TRAMITE',
-    concesion: { id: '15', numero: '906', estado: 'VIGENTE', fechaOtorgamiento: null },
+    concesion: { id: '15', numero: '906', estado: 'VIGENTE', fechaOtorgamiento: null, padron: null },
     titularesActuales: [],
     domiciliosActuales: [],
     nuevosTitulares: [],

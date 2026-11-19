@@ -18,8 +18,10 @@ export const tramitesRoutes: RouteObject[] = [
     children: [
       { index: true, element: <Navigate to={ROUTES.catastro.tramites} replace /> },
       altaDeConcesionRoute,
+      // Circula por varias oficinas (backend real): cada pantalla controla su permiso u oficina.
+      cambioDeTitularidadRoute,
       // Pendientes de migrar al backend: por ahora, solo Catastro.
-      deOficina('catastro', [cambioDeTitularidadRoute, anulacionRoute, reduccionAmpliacionRoute, subdivisionRoute, reubicacionRoute, permisosRoute]),
+      deOficina('catastro', [anulacionRoute, reduccionAmpliacionRoute, subdivisionRoute, reubicacionRoute, permisosRoute]),
     ],
   },
 ]

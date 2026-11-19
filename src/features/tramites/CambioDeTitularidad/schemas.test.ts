@@ -15,8 +15,8 @@ describe('checklist de documentación (pasos 4-5, flujo alterno 4.1)', () => {
   })
 
   it('devuelve los obligatorios sin marcar, en el orden del checklist', () => {
-    expect(faltantesDelChecklist(checklist, [])).toEqual(['CUIT / CUIL', 'Libre deuda de tasa de uso de agua'])
-    expect(faltantesDelChecklist(checklist, [2, 3])).toEqual(['CUIT / CUIL'])
+    expect(faltantesDelChecklist(checklist, []).map((d) => d.descripcion)).toEqual(['CUIT / CUIL', 'Libre deuda de tasa de uso de agua'])
+    expect(faltantesDelChecklist(checklist, [2, 3]).map((d) => d.descripcion)).toEqual(['CUIT / CUIL'])
   })
 })
 

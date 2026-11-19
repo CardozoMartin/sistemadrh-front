@@ -1,5 +1,9 @@
 // Respuestas del backend real para el Cambio de Titularidad (GET /tramites/cambio-titularidad…).
 // Mismos nombres que devuelve el backend (src/tramites/cambio-titularidad/cambio-titularidad.service.ts).
+// Lo de Recaudación (deuda, aviso por correo) es común a los trámites: se reusan los tipos del alta.
+import type { AvisoDeudaBackend } from '../AltaDeConcesion/backend.types'
+
+export type { AntecedentesDeuda, AvisoDeudaBackend, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
 import type { Oficina } from '@/types/domain'
 
 /** Una persona (titular actual o propuesto). Los datos sensibles pueden venir ocultos según el permiso. */
@@ -49,7 +53,8 @@ export interface CambioBackend {
   cambio: {
     id: string
     estado: EstadoCambio
-    concesion: { id: string; numero: string | null; estado: string; fechaOtorgamiento: string | null }
+    /** `padron`: padrón vinculado (el del inmueble vigente), para Recaudación (paso 14). */
+    concesion: { id: string; numero: string | null; estado: string; fechaOtorgamiento: string | null; padron: string | null }
     titularesActuales: PersonaCambio[]
     domiciliosActuales: DomicilioCambio[]
     nuevosTitulares: PersonaCambio[]
@@ -59,7 +64,8 @@ export interface CambioBackend {
     documentacionPresentada: { id: number; descripcion: string }[]
     resolucion: { numero: string; fecha: string } | null
   }
-  avisoDeuda: unknown
+  /** Recaudación le dio curso con deuda (null: pasó sin deuda o todavía no pasó). */
+  avisoDeuda: AvisoDeudaBackend | null
 }
 
 /** GET /tramites/cambio-titularidad: un cambio en trámite. */

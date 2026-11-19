@@ -18,6 +18,7 @@ import { useBandeja, useCancelarAlta, useLiberarAlta, useReasignables, useReasig
 /** Pantalla de trabajo de cada trámite que ya circula en el backend real. */
 const RUTA_TRABAJO: Record<string, (id: string) => string> = {
   ALTA_CONCESION: ROUTES.tramites.altaConcesion.circuito,
+  CAMBIO_TITULARIDAD: ROUTES.tramites.cambioTitularidad.circuito,
   BAJA_POZO: ROUTES.pozo.baja,
 }
 
