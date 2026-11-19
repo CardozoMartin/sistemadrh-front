@@ -184,6 +184,12 @@ const PANELES: Record<string, { titulo: string; icono: string; accion: string; c
     accion: 'dictaminar',
     contenido: (d, onTerminado) => <DictamenCambio datos={d} oficina="distrito" onTerminado={onTerminado} />,
   },
+  JURIDICO: {
+    titulo: 'Jurídico · Dictamen',
+    icono: 'gavel',
+    accion: 'dictaminar',
+    contenido: (d, onTerminado) => <DictamenCambio datos={d} oficina="juridico" onTerminado={onTerminado} />,
+  },
 }
 
 /** Dónde está la concesión (lo que mira Distrito para decidir), con acceso a la ficha en el visor. */

@@ -9,6 +9,7 @@ import type { CambioBackend } from '../../backend.types'
 import { faltaEnDictamen, MINIMO_OBSERVACIONES_TECNICAS, type ResultadoDictamen } from '../../dictamen'
 import { useDictaminarCambio } from '../../hooks'
 import type { Terminado } from './terminado'
+import { DocumentacionRevision } from './DocumentacionRevision'
 import { ResumenEnvio } from './ResumenEnvio'
 
 const SIGUIENTE = { distrito: 'Jurídico', juridico: 'Secretaría General' } as const
@@ -49,6 +50,7 @@ export function DictamenCambio({ datos, oficina, onTerminado }: { datos: CambioB
 
   return (
     <div className="flex flex-col gap-4">
+      {oficina === 'juridico' && <DocumentacionRevision datos={datos} />}
       <p className="text-sm font-semibold text-slate-900 dark:text-white">¿Está apto?</p>
       <Opciones
         valor={resultado}

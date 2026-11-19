@@ -226,7 +226,10 @@ ya usa el **backend real** (`api.ts`, `hooks.ts`, `backend.types.ts`); el circui
    cambio se rechaza y la concesión sigue igual. Reglas en `dictamen.ts`; el mismo componente sirve para Jurídico.
    Cada distrito ve solo sus expedientes (lo controla el backend: bandeja, lista y detalle); si alguien abre el de otro
    distrito, la pantalla avisa «No puede ver este expediente».
-5. **Pendiente:** Jurídico → Secretaría → cierre en Catastro siguen en json-server
+   **Jurídico** (pasos 25-31, versión preliminar): revisa la documentación presentada (`DocumentacionRevision`:
+   el checklist con lo que trajo el expediente) y decide apto / no apto con el mismo `DictamenCambio` (observaciones
+   opcionales, obligatorias si no apto), confirmación y «Trámite enviado». Apto: pasa a Secretaría General.
+5. **Pendiente:** Secretaría General → cierre en Catastro siguen en json-server
    (`GestionCambioTitularidadPage`, `etapas/`); en `CircuitoCambioPage` esas etapas muestran «todavía no disponible».
 6. **Tests** (`npm test`): `schemas.test.ts` (checklist, inicio, nuevo titular ≠ actual), `adaptadores.test.ts`
    (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) `recaudacion.test.ts` (decisión de deuda) y `dictamen.test.ts` (apto / no apto).
