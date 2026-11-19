@@ -1,7 +1,9 @@
 // Reglas del dictamen de Distrito y Jurídico (caso de uso: apto / no apto). Las mismas que valida
 // el backend (exigirMotivoSiNoEsApto y, en Distrito, exigirObservacionesTecnicas).
 
-export type ResultadoDictamen = 'APTO' | 'NO_APTO'
+import type { AptoNoApto } from './backend.types'
+
+export type ResultadoDictamen = AptoNoApto
 
 /** Largo mínimo de las observaciones técnicas de Distrito (igual que el backend). */
 export const MINIMO_OBSERVACIONES_TECNICAS = 10

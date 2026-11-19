@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Alert } from '@/components/feedback/States'
-import { controlClass } from '@/components/form/styles'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Icon } from '@/components/ui/Icon'
@@ -11,12 +10,11 @@ import { Observaciones, Opciones } from '../../../AltaDeConcesion/components/cir
 import type { CambioBackend } from '../../backend.types'
 import { ResumenEnvio } from './ResumenEnvio'
 import type { Terminado } from './terminado'
-import { estadoDeudaPorTitular, faltaEnDecision, type DecisionDeuda, type EstadoDeudaTitular } from '../../recaudacion'
-import { useAntecedentesDeudaCambio, useBorradorAvisoCambio, useCursoConDeudaCambio, useNotificarDeudaCambio, useVerificarDeudaCambio } from '../../hooks'
-
-
-const SIGUIENTE = 'Distrito'
-const MINIMO_NOTA = 10
+import { AvisoDeudaCambio } from './AvisoDeudaCambio'
+import { CursoConDeudaCambio } from './CursoConDeudaCambio'
+import { opcionesAptoNoApto } from './opciones'
+import { estadoDeudaPorTitular, faltaEnDecision, SIGUIENTE_A_RECAUDACION as SIGUIENTE, type DecisionDeuda, type EstadoDeudaTitular } from '../../recaudacion'
+import { useAntecedentesDeudaCambio, useVerificarDeudaCambio } from '../../hooks'
 
 /**
  * Recaudación en el Cambio de Titularidad (caso de uso, pasos 11-17). El sistema trae las
@@ -157,10 +155,7 @@ export function RecaudacionCambio({ datos, enEspera, onTerminado }: { datos: Cam
           if (d !== decision) setObservaciones('')
           setDecision(d)
         }}
-        opciones={[
-          { valor: 'APTO', texto: 'No posee deuda (apto)', icono: 'check_circle', color: 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300' },
-          { valor: 'NO_APTO', texto: 'Posee deuda (no apto)', icono: 'block', color: 'border-red-500 bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' },
-        ]}
+        opciones={opcionesAptoNoApto('No posee deuda (apto)', 'Posee deuda (no apto)')}
       />
 
       {/* Paso 13: observaciones (obligatorias si posee deuda). */}
@@ -244,143 +239,6 @@ function TarjetaDeuda({ titular }: { titular: EstadoDeudaTitular }) {
       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
         {titular.concesiones.length ? `Concesiones: ${titular.concesiones.join(', ')}` : 'Sin concesiones otorgadas'}
       </p>
-    </div>
-  )
-}
-
-type Texto = { asunto: string; cuerpo: string }
-
-/** Aviso de deuda por correo: el sistema arma el texto de cada titular con deuda y Recaudación lo puede editar. */
-function AvisoDeudaCambio({ expedienteId }: { expedienteId: string }) {
-  const [abierto, setAbierto] = useState(false)
-  const borrador = useBorradorAvisoCambio(expedienteId, abierto)
-  const notificar = useNotificarDeudaCambio(expedienteId)
-  const [textos, setTextos] = useState<Record<string, Texto>>({})
-  const correos = borrador.data?.correos ?? []
-  const conEmail = correos.filter((c) => c.email)
-
-  useEffect(() => {
-    if (borrador.data) setTextos(Object.fromEntries(borrador.data.correos.map((c) => [c.personaId, { asunto: c.asunto, cuerpo: c.cuerpo }])))
-  }, [borrador.data])
-
-  const editar = (personaId: string, campo: keyof Texto, valor: string) => setTextos((t) => ({ ...t, [personaId]: { ...t[personaId], [campo]: valor } }))
-  const incompleto = conEmail.some((c) => (textos[c.personaId]?.asunto.trim().length ?? 0) < 3 || (textos[c.personaId]?.cuerpo.trim().length ?? 0) < 20)
-
-  function enviar() {
-    notificar.mutate(
-      { textos: conEmail.map((c) => ({ personaId: c.personaId, asunto: textos[c.personaId].asunto.trim(), cuerpo: textos[c.personaId].cuerpo.trim() })) },
-      { onSuccess: () => setAbierto(false) },
-    )
-  }
-
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <Icon name="mail" className="mt-0.5 text-primary" />
-          <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Aviso de deuda al titular</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Un correo a cada titular con deuda, al email que tiene cargado. Puede editar el texto antes de enviarlo.</p>
-          </div>
-        </div>
-        {!abierto && (
-          <Button size="sm" variant="secondary" iconLeft="edit_note" onClick={() => setAbierto(true)}>
-            Preparar aviso
-          </Button>
-        )}
-      </div>
-
-      {notificar.data && (
-        <Alert tone="info">
-          Enviado a {notificar.data.enviados.map((e) => `${e.titular} (${e.para.join(', ')})`).join(', ') || 'nadie'}.
-          {notificar.data.sinCorreo.length > 0 && ` Sin correo cargado: ${notificar.data.sinCorreo.join(', ')}.`}
-        </Alert>
-      )}
-
-      {abierto &&
-        (borrador.isPending ? (
-          <p className="text-sm text-slate-500">Armando el texto…</p>
-        ) : borrador.isError ? (
-          <Alert>{mensajeDeError(borrador.error)}</Alert>
-        ) : (
-          <>
-            {correos.map((c) =>
-              c.email ? (
-                <div key={c.personaId} className="flex flex-col gap-2 rounded-lg bg-slate-50 p-3 dark:bg-slate-900/40">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Para <strong>{c.titular}</strong> · {c.email}
-                  </p>
-                  <input value={textos[c.personaId]?.asunto ?? ''} onChange={(e) => editar(c.personaId, 'asunto', e.target.value)} className={controlClass({})} aria-label="Asunto" />
-                  <textarea value={textos[c.personaId]?.cuerpo ?? ''} onChange={(e) => editar(c.personaId, 'cuerpo', e.target.value)} rows={8} className={controlClass({ className: 'resize-y' })} aria-label="Texto del correo" />
-                </div>
-              ) : (
-                <p key={c.personaId} className="text-sm text-amber-700 dark:text-amber-300">
-                  {c.titular} no tiene correo cargado: no se le puede avisar por este medio.
-                </p>
-              ),
-            )}
-            {notificar.error && <Alert>{mensajeDeError(notificar.error)}</Alert>}
-            <div className="flex gap-2">
-              <Button size="sm" iconRight="send" disabled={!conEmail.length || incompleto} loading={notificar.isPending} onClick={enviar}>
-                Enviar aviso
-              </Button>
-              <Button size="sm" variant="ghost" disabled={notificar.isPending} onClick={() => setAbierto(false)}>
-                Cancelar
-              </Button>
-            </div>
-          </>
-        ))}
-    </div>
-  )
-}
-
-/** En espera y no se pudo cobrar: pasa igual a Distrito con una nota de por qué (la deuda sigue registrada). */
-function CursoConDeudaCambio({ expedienteId, numero, onTerminado }: { expedienteId: string; numero: string; onTerminado: (t: Terminado) => void }) {
-  const [abierto, setAbierto] = useState(false)
-  const [nota, setNota] = useState('')
-  const [confirmar, setConfirmar] = useState(false)
-  const accion = useCursoConDeudaCambio(expedienteId)
-  const corta = nota.trim().length < MINIMO_NOTA
-
-  if (!abierto) {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/5">
-        <p className="text-sm text-amber-900 dark:text-amber-200">
-          <span className="font-semibold">¿No se pudo cobrar?</span> Puede darle curso igual con una nota de por qué; la deuda sigue registrada.
-        </p>
-        <Button size="sm" variant="secondary" iconLeft="forward" onClick={() => setAbierto(true)}>
-          Dar curso con deuda
-        </Button>
-      </div>
-    )
-  }
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border-2 border-amber-300 bg-amber-50/60 p-4 dark:border-amber-500/40 dark:bg-amber-500/5">
-      <Observaciones valor={nota} onChange={setNota} obligatorio placeholder="Por qué se le da curso sin cobrar" />
-      {nota && corta && <p className="text-xs font-medium text-red-600 dark:text-red-400">Explique el motivo (al menos {MINIMO_NOTA} caracteres).</p>}
-      {accion.error && <Alert>{mensajeDeError(accion.error)}</Alert>}
-      <div className="flex flex-wrap gap-2">
-        <Button iconRight="send" disabled={corta} loading={accion.isPending} onClick={() => setConfirmar(true)}>
-          Pasar a {SIGUIENTE} con deuda
-        </Button>
-        <Button variant="secondary" disabled={accion.isPending} onClick={() => setAbierto(false)}>
-          Cancelar
-        </Button>
-      </div>
-      <ConfirmDialog
-        open={confirmar}
-        title="¿Dar curso con deuda?"
-        message={`El expediente pasa a ${SIGUIENTE} con la deuda pendiente. Las demás oficinas van a ver el aviso y su nota.`}
-        confirmLabel="Sí, pasar con deuda"
-        cancelLabel="Volver"
-        onConfirm={() => {
-          setConfirmar(false)
-          accion.mutate(nota.trim(), {
-            onSuccess: () => onTerminado({ titulo: 'Trámite enviado con deuda', mensaje: `El expediente ${numero} fue enviado a ${SIGUIENTE} con la deuda pendiente y su nota.` }),
-          })
-        }}
-        onCancel={() => setConfirmar(false)}
-      />
     </div>
   )
 }

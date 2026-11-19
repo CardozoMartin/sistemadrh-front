@@ -18,6 +18,7 @@ import { CambiosEnCurso } from '../components/CambiosEnCurso'
 import { ChecklistDocumentacion } from '../components/ChecklistDocumentacion'
 import type { DocumentoChecklist } from '../backend.types'
 import { esNumeroOcupado } from '../errores'
+import { numeroConcesion } from '../formato'
 import { useChecklistCambio, useIniciarCambio } from '../hooks'
 import { faltantesDelChecklist, inicioCambioSchema, type InicioCambioForm } from '../schemas'
 
@@ -93,7 +94,7 @@ export default function InicioCambioTitularidadPage() {
           <Card>
             <EncabezadoTarjeta
               antetitulo="Catastro · Inicio del trámite"
-              titulo={`Concesión N° ${seleccionada.numero ?? seleccionada.id}`}
+              titulo={`Concesión ${numeroConcesion(seleccionada)}`}
               descripcion={`Titular actual: ${seleccionada.titular ?? '—'}${seleccionada.distrito ? ` · Distrito ${seleccionada.distrito}` : ''}`}
               icono="swap_horiz"
               extra={<AvisoObligatorios />}

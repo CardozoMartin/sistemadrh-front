@@ -5,7 +5,7 @@ import type { FiltrosConcesiones } from '@/features/catastro/consultaConcesiones
 import { titularesADto } from '../AltaDeConcesion/adaptadores'
 import type { NuevoTitularForm } from './schemas'
 import { cambioTitularidadApi, type IniciarCambioDto } from './api'
-import type { CambioBackend } from './backend.types'
+import type { CambioBackend, DictamenDto } from './backend.types'
 import { altaKeys } from '../AltaDeConcesion/hooks'
 
 export const cambioKeys = {
@@ -121,10 +121,13 @@ export const useVerificarDeudaCambio = (id: string) => useAccionCambio(id, cambi
 export const useCursoConDeudaCambio = (id: string) => useAccionCambio(id, cambioTitularidadApi.cursoConDeuda)
 export const useNotificarDeudaCambio = (id: string) => useAccionCambio(id, cambioTitularidadApi.notificarDeuda)
 export const useDictaminarCambio = (id: string, oficina: 'distrito' | 'juridico') =>
-  useAccionCambio(id, (i, dto: { resultado: 'APTO' | 'NO_APTO'; observaciones?: string }) => cambioTitularidadApi.dictaminar(i, oficina, dto))
+  useAccionCambio(id, (i, dto: DictamenDto) => cambioTitularidadApi.dictaminar(i, oficina, dto))
 
 /** Secretaría General: registra la resolución con su PDF y pasa a Catastro (verificación final). */
 export const useResolucionCambio = (id: string) => useAccionCambio(id, cambioTitularidadApi.resolucion)
+
+/** Catastro: verificación final (finaliza el cambio). */
+export const useVerificacionFinalCambio = (id: string) => useAccionCambio(id, cambioTitularidadApi.verificacionFinal)
 
 /** Borrador del aviso de deuda: se pide al abrirlo y no se cachea (las deudas pueden cambiar). */
 export function useBorradorAvisoCambio(id: string, habilitado: boolean) {

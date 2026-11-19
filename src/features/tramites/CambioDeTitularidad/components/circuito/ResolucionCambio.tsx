@@ -4,10 +4,12 @@ import { controlClass } from '@/components/form/styles'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Icon } from '@/components/ui/Icon'
+import { formatearFecha } from '@/config/expedientes'
 import { mensajeDeError } from '@/services/api/errors'
 import { Campo } from '../../../AltaDeConcesion/components/circuito/AccionesOficina'
 import { cambioTitularidadApi } from '../../api'
 import type { CambioBackend } from '../../backend.types'
+import { numeroConcesion } from '../../formato'
 import { useResolucionCambio } from '../../hooks'
 import { anioDeFecha, faltaEnResolucion, MAX_MB_RESOLUCION, tamanio } from '../../resolucion'
 import { ResumenEnvio } from './ResumenEnvio'
@@ -100,9 +102,9 @@ export function ResolucionCambio({ datos, onTerminado }: { datos: CambioBackend;
         <ResumenEnvio
           filas={[
             ['Expediente', expediente],
-            ['Concesión', `N° ${datos.cambio.concesion.numero ?? datos.cambio.concesion.id}`],
+            ['Concesión', numeroConcesion(datos.cambio.concesion)],
             ['Resolución', numero && fecha ? `${Number(numero)}/${anioDeFecha(fecha)}` : null],
-            ['Fecha de firma', fecha ? fecha.split('-').reverse().join('/') : null],
+            ['Fecha de firma', fecha ? formatearFecha(fecha) : null],
             ['PDF', archivo ? `${archivo.name} (${tamanio(archivo.size)})` : null],
             ['Observaciones', observaciones.trim() || null],
             ['Destino', 'Catastro · verificación final'],
@@ -141,7 +143,7 @@ export function ResolucionCargada({ datos }: { datos: CambioBackend }) {
         <span>
           <span className="text-slate-500 dark:text-slate-400">Resolución </span>
           <strong className="text-slate-900 dark:text-white">{r.numero}</strong>
-          <span className="text-slate-500 dark:text-slate-400"> · firmada el {r.fecha.split('-').reverse().join('/')}</span>
+          <span className="text-slate-500 dark:text-slate-400"> · firmada el {formatearFecha(r.fecha)}</span>
           {r.observaciones && <span className="block text-xs text-slate-500 dark:text-slate-400">{r.observaciones}</span>}
         </span>
         {r.conArchivo ? (

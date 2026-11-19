@@ -1,8 +1,7 @@
-import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { RUTA_BANDEJA } from '@/config/routes'
+import { ROUTES, RUTA_BANDEJA } from '@/config/routes'
 import { Alert, EmptyState, ErrorState, LoadingState } from '@/components/feedback/States'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -14,12 +13,13 @@ import { AvisoDeuda } from '../../AltaDeConcesion/components/circuito/AvisoDeuda
 import { DondeEsta } from '../../AltaDeConcesion/components/circuito/DondeEsta'
 import { HistorialAlta } from '../../AltaDeConcesion/components/circuito/HistorialAlta'
 import type { CambioBackend } from '../backend.types'
+import { CierreCambio } from '../components/circuito/CierreCambio'
 import { DatosTitularesCambio } from '../components/circuito/DatosTitularesCambio'
 import { DictamenCambio } from '../components/circuito/DictamenCambio'
 import { RecaudacionCambio } from '../components/circuito/RecaudacionCambio'
 import { ResolucionCambio, ResolucionCargada } from '../components/circuito/ResolucionCambio'
 import type { Terminado } from '../components/circuito/terminado'
-import { ROUTES } from '@/config/routes'
+import { nombres, numeroConcesion } from '../formato'
 import { useCambio, useTomarCambio } from '../hooks'
 
 const TITULO = 'Expediente de cambio de titularidad'
@@ -33,7 +33,7 @@ const TERMINADO: Record<string, string> = {
 /**
  * Un cambio de titularidad en el circuito de oficinas (backend real): dónde está, qué hace la
  * oficina que lo tiene, los datos del titular actual y del nuevo, y el historial completo.
- * Etapas con pantalla: Recaudación, Distrito, Jurídico y Secretaría General.
+ * Etapas con pantalla: Recaudación, Distrito, Jurídico, Secretaría General y la verificación final en Catastro.
  */
 export default function CircuitoCambioPage() {
   const { expedienteId } = useParams()
@@ -51,14 +51,15 @@ export default function CircuitoCambioPage() {
     )
   }
   if (cambio.isError) {
+    const error = toApiError(cambio.error)
     return (
       <>
         <PageHeader title={TITULO} />
         {esNoEncontrado(cambio.error) ? (
           <EmptyState icon="search_off" titulo="No se encontró el expediente" />
-        ) : toApiError(cambio.error).status === 403 ? (
+        ) : error.status === 403 ? (
           // Ej: personal de un distrito que abre un expediente de otro distrito.
-          <EmptyState icon="lock" titulo="No puede ver este expediente" descripcion={toApiError(cambio.error).message} />
+          <EmptyState icon="lock" titulo="No puede ver este expediente" descripcion={error.message} />
         ) : (
           <ErrorState error={cambio.error} onRetry={() => void cambio.refetch()} reintentando={cambio.isFetching} />
         )}
@@ -72,7 +73,11 @@ export default function CircuitoCambioPage() {
     <>
       <PageHeader
         title={`${TITULO} ${expediente.numero}`}
-        description={`Concesión N° ${c.concesion.numero ?? c.concesion.id} · ${c.titularesActuales.map((t) => t.nombreCompleto).join(', ')} → ${c.nuevosTitulares.map((t) => t.nombreCompleto).join(', ') || 'sin nuevo titular'}`}
+        description={`Concesión ${numeroConcesion(c.concesion)} · ${
+          c.estado === 'FINALIZADO'
+            ? `${nombres(c.titularesAnteriores) || 'titular anterior'} → ${nombres(c.titularesActuales)}`
+            : `${nombres(c.titularesActuales)} → ${nombres(c.nuevosTitulares) || 'sin nuevo titular'}`
+        }`}
       />
 
       <div className="flex flex-col gap-6">
@@ -202,6 +207,12 @@ const PANELES: Record<string, { titulo: string; icono: string; accion: string; c
     accion: 'cargar la resolución',
     contenido: (d, onTerminado) => <ResolucionCambio datos={d} onTerminado={onTerminado} />,
   },
+  CIERRE: {
+    titulo: 'Catastro · Verificación final',
+    icono: 'task_alt',
+    accion: 'hacer la verificación final',
+    contenido: (d, onTerminado) => <CierreCambio datos={d} onTerminado={onTerminado} />,
+  },
 }
 
 /** Dónde está la concesión (lo que mira Distrito para decidir), con acceso a la ficha en el visor. */
@@ -212,7 +223,7 @@ function UbicacionConcesion({ datos }: { datos: CambioBackend }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm dark:bg-slate-900/40">
       <span>
-        <span className="text-slate-500 dark:text-slate-400">Concesión N° {concesion.numero ?? concesion.id}: </span>
+        <span className="text-slate-500 dark:text-slate-400">Concesión {numeroConcesion(concesion)}: </span>
         <strong className="text-slate-900 dark:text-white">{texto || 'ubicación no registrada'}</strong>
         {concesion.padron && <span className="text-slate-500 dark:text-slate-400"> · Padrón {concesion.padron}</span>}
       </span>

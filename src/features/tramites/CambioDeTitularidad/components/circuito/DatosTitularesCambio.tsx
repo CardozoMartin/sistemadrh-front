@@ -37,10 +37,17 @@ function Persona({ persona, domicilio, padron }: { persona: PersonaCambio; domic
 export function DatosTitularesCambio({ datos }: { datos: CambioBackend }) {
   const { cambio } = datos
   const padron = cambio.concesion.padron
-  const columnas = [
-    { titulo: 'Titular actual', icono: 'person', personas: cambio.titularesActuales, domicilios: cambio.domiciliosActuales },
-    { titulo: 'Nuevo titular (propuesto)', icono: 'person_add', personas: cambio.nuevosTitulares, domicilios: cambio.nuevosDomicilios },
-  ]
+  // Finalizado: lo vigente ya es el nuevo titular; el anterior se muestra sin domicilio (quedó en el historial).
+  const columnas =
+    cambio.estado === 'FINALIZADO'
+      ? [
+          { titulo: 'Titular anterior', icono: 'person_off', personas: cambio.titularesAnteriores, domicilios: [] as DomicilioCambio[] },
+          { titulo: 'Titular actual (desde la resolución)', icono: 'person', personas: cambio.titularesActuales, domicilios: cambio.domiciliosActuales },
+        ]
+      : [
+          { titulo: 'Titular actual', icono: 'person', personas: cambio.titularesActuales, domicilios: cambio.domiciliosActuales },
+          { titulo: 'Nuevo titular (propuesto)', icono: 'person_add', personas: cambio.nuevosTitulares, domicilios: cambio.nuevosDomicilios },
+        ]
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {columnas.map((c) => (

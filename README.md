@@ -234,10 +234,15 @@ ya usa el **backend real** (`api.ts`, `hooks.ts`, `backend.types.ts`); el circui
    y «Trámite finalizado en Secretaría»: pasa a Catastro para la verificación final. Reglas en `resolucion.ts`. El PDF va
    por multipart (`cambioTitularidadApi.resolucion`) y se abre con «Ver PDF» (`ResolucionCargada`: se baja con la
    sesión como blob, un link directo no lleva el token).
-5. **Pendiente:** la verificación final en Catastro sigue en json-server (`GestionCambioTitularidadPage`, `etapas/`);
-   en `CircuitoCambioPage` esa etapa muestra «todavía no disponible». El modo demo no emula la carga del PDF.
+   **Verificación final en Catastro** (paso 40 y «Trámites pendientes»): `CierreCambio` pide confirmar que se cotejó la
+   resolución (el PDF se abre en «Verificación de datos»), observaciones, confirmación con el resumen (titular actual →
+   nuevo, resolución) y «Trámite finalizado». Recién ahí la concesión cambia de titular; con el cambio finalizado la
+   pantalla muestra «Titular anterior» y «Titular actual (desde la resolución)». Reglas en `cierre.ts`.
+   **Con esto, todo el circuito del cambio usa el backend real.**
+5. **Pendiente (deuda técnica):** sacar lo viejo en json-server (`GestionCambioTitularidadPage`, `etapas/`, ruta
+   `expediente/:id`); completar correo y teléfono del nuevo titular en el cierre; el modo demo no emula el PDF.
 6. **Tests** (`npm test`): `schemas.test.ts` (checklist, inicio, nuevo titular ≠ actual), `adaptadores.test.ts`
-   (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) `recaudacion.test.ts` (decisión de deuda), `dictamen.test.ts` (apto / no apto) y `resolucion.test.ts` (datos y PDF de la resolución).
+   (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) `recaudacion.test.ts` (decisión de deuda), `dictamen.test.ts` (apto / no apto), `resolucion.test.ts` (datos y PDF de la resolución) y `cierre.test.ts` (verificación final).
 4. `EtapaCierreCambio` (`CatastroFinalizacion.html`) — **carga final del titular** con el N° de resolución. Solo se
    habilita si todas las oficinas aprobaron y hay resolución. Hasta acá la concesión sigue a nombre del titular
    actual (el nuevo es «propuesto»); al finalizar cambia y los anteriores quedan en `datos.titularesAnteriores`.

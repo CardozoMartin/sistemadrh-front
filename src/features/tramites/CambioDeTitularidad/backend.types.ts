@@ -33,6 +33,31 @@ export interface DomicilioCambio {
 
 export type EstadoCambio = 'EN_TRAMITE' | 'FINALIZADO' | 'RECHAZADO' | 'ANULADO'
 
+/** Lo que decide cada oficina (Recaudación, Distrito, Jurídico). */
+export type AptoNoApto = 'APTO' | 'NO_APTO'
+
+/** POST …/recaudacion: por cada concesión, si tiene deuda. */
+export interface VerificacionDeudaDto {
+  resultado: AptoNoApto
+  concesiones: { concesionId: string; tieneDeuda: boolean }[]
+  observaciones?: string
+}
+
+/** POST …/distrito y …/juridico. */
+export interface DictamenDto {
+  resultado: AptoNoApto
+  observaciones?: string
+}
+
+/** POST …/resolucion (multipart): los datos de la resolución y el PDF escaneado. */
+export interface ResolucionDto {
+  numero: string
+  anio: number
+  fecha: string
+  observaciones?: string
+  archivo: File
+}
+
 /** Dónde está el expediente (resumen común a todos los trámites). */
 export interface ResumenExpediente {
   id: string
@@ -63,8 +88,11 @@ export interface CambioBackend {
       /** Dónde está (inmueble vigente): lo que mira Distrito para decidir. */
       ubicacion: { departamento: string | null; localidad: string | null; distrito: string | null }
     }
+    /** Lo vigente hoy: con el cambio FINALIZADO, son los nuevos. */
     titularesActuales: PersonaCambio[]
     domiciliosActuales: DomicilioCambio[]
+    /** Solo con el cambio FINALIZADO: quiénes eran titulares hasta la resolución. */
+    titularesAnteriores: PersonaCambio[]
     nuevosTitulares: PersonaCambio[]
     nuevosDomicilios: DomicilioCambio[]
     cargaCompleta: boolean

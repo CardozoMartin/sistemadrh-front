@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useDominio } from '@/hooks/useDominio'
 import { estaEnCarga } from '../backend.types'
+import { numeroConcesion } from '../formato'
 import { useCambiosEnCurso } from '../hooks'
 
 /** Cambios de titularidad en trámite (backend real): los que están en carga se pueden continuar. */
@@ -28,7 +29,7 @@ export function CambiosEnCurso() {
             <li key={c.expedienteId} className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div className="min-w-0">
                 <p className="font-semibold text-slate-900 dark:text-white">
-                  Expediente {c.expediente} · Concesión {c.concesion.numero ?? c.concesion.id}
+                  Expediente {c.expediente} · Concesión {numeroConcesion(c.concesion)}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {c.nuevoTitular ? `Nuevo titular: ${c.nuevoTitular}` : 'Falta cargar el nuevo titular'} · En {nombreOficina(c.oficinaActual)} · Iniciado{' '}

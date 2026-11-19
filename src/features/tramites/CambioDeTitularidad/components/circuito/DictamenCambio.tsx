@@ -7,9 +7,11 @@ import { mensajeDeError } from '@/services/api/errors'
 import { Campo, Opciones } from '../../../AltaDeConcesion/components/circuito/AccionesOficina'
 import type { CambioBackend } from '../../backend.types'
 import { faltaEnDictamen, MINIMO_OBSERVACIONES_TECNICAS, type ResultadoDictamen } from '../../dictamen'
+import { numeroConcesion } from '../../formato'
 import { useDictaminarCambio } from '../../hooks'
 import type { Terminado } from './terminado'
 import { DocumentacionRevision } from './DocumentacionRevision'
+import { opcionesAptoNoApto } from './opciones'
 import { ResumenEnvio } from './ResumenEnvio'
 
 const SIGUIENTE = { distrito: 'Jurídico', juridico: 'Secretaría General' } as const
@@ -55,10 +57,7 @@ export function DictamenCambio({ datos, oficina, onTerminado }: { datos: CambioB
       <Opciones
         valor={resultado}
         onChange={setResultado}
-        opciones={[
-          { valor: 'APTO', texto: 'Apto', icono: 'check_circle', color: 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300' },
-          { valor: 'NO_APTO', texto: 'No apto', icono: 'block', color: 'border-red-500 bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' },
-        ]}
+        opciones={opcionesAptoNoApto('Apto', 'No apto')}
       />
 
       <Campo etiqueta={etiqueta} ayuda={tecnicas ? `Informe técnico del cambio (al menos ${MINIMO_OBSERVACIONES_TECNICAS} caracteres). Queda en el historial.` : undefined}>
@@ -103,7 +102,7 @@ export function DictamenCambio({ datos, oficina, onTerminado }: { datos: CambioB
         <ResumenEnvio
           filas={[
             ['Expediente', numero],
-            ['Concesión', `N° ${datos.cambio.concesion.numero ?? datos.cambio.concesion.id}`],
+            ['Concesión', numeroConcesion(datos.cambio.concesion)],
             ['Resultado', resultado === 'APTO' ? 'Apto' : 'No apto'],
             [tecnicas ? 'Observaciones técnicas' : 'Observaciones', observaciones.trim() || null],
             ['Destino', resultado === 'APTO' ? siguiente : 'Rechazado'],

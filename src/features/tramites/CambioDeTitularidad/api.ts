@@ -6,7 +6,18 @@
 import { backend } from '@/services/api/backend'
 import type { FiltrosConcesiones, ResultadoConcesiones } from '@/features/catastro/consultaConcesiones'
 import type { titularesADto } from '../AltaDeConcesion/adaptadores'
-import type { AntecedentesDeuda, BorradorAvisoDeuda, CambioBackend, CambioEnLista, DocumentoChecklist, NotificarDeudaDto, ResultadoAvisoDeuda } from './backend.types'
+import type {
+  AntecedentesDeuda,
+  BorradorAvisoDeuda,
+  CambioBackend,
+  CambioEnLista,
+  DictamenDto,
+  DocumentoChecklist,
+  NotificarDeudaDto,
+  ResolucionDto,
+  ResultadoAvisoDeuda,
+  VerificacionDeudaDto,
+} from './backend.types'
 
 /** Cuerpo de PUT …/titulares: el mismo que arma el alta. */
 type TitularesDto = ReturnType<typeof titularesADto>
@@ -55,8 +66,7 @@ export const cambioTitularidadApi = {
   /** Titulares actuales y nuevos, sus concesiones otorgadas y si tienen deuda. */
   antecedentesDeuda: (expedienteId: string) => datos(backend.get<AntecedentesDeuda>(`${CAMBIO}/${expedienteId}/recaudacion`)),
   /** Apto: pasa a Distrito. No apto: queda en espera en Recaudación (con las concesiones con deuda marcadas). */
-  verificarDeuda: (expedienteId: string, dto: { resultado: 'APTO' | 'NO_APTO'; concesiones: { concesionId: string; tieneDeuda: boolean }[]; observaciones?: string }) =>
-    datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/recaudacion`, dto)),
+  verificarDeuda: (expedienteId: string, dto: VerificacionDeudaDto) => datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/recaudacion`, dto)),
   /** En espera por deuda y no se pudo cobrar: pasa igual a Distrito con la nota de por qué. */
   cursoConDeuda: (expedienteId: string, observaciones: string) => datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/recaudacion/curso-con-deuda`, { observaciones })),
   /** El correo de cada titular con deuda (texto base), para revisarlo antes de enviarlo. */
@@ -64,11 +74,10 @@ export const cambioTitularidadApi = {
   notificarDeuda: (expedienteId: string, dto: NotificarDeudaDto) => datos(backend.post<ResultadoAvisoDeuda>(`${CAMBIO}/${expedienteId}/recaudacion/notificar-deuda`, dto)),
 
   // --- Distrito y Jurídico: apto / no apto (caso de uso, pasos 18-31) ---------------------
-  dictaminar: (expedienteId: string, oficina: 'distrito' | 'juridico', dto: { resultado: 'APTO' | 'NO_APTO'; observaciones?: string }) =>
-    datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/${oficina}`, dto)),
+  dictaminar: (expedienteId: string, oficina: 'distrito' | 'juridico', dto: DictamenDto) => datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/${oficina}`, dto)),
 
   /** Secretaría General: la resolución (número, año, fecha de firma, observaciones) con el PDF escaneado. */
-  resolucion: (expedienteId: string, dto: { numero: string; anio: number; fecha: string; observaciones?: string; archivo: File }) => {
+  resolucion: (expedienteId: string, dto: ResolucionDto) => {
     const form = new FormData()
     form.append('numero', dto.numero)
     form.append('anio', String(dto.anio))
@@ -78,6 +87,8 @@ export const cambioTitularidadApi = {
     // El cliente manda JSON por defecto: con multipart, axios arma el boundary solo.
     return datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/resolucion`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }))
   },
+  /** Catastro: verificación final. El cambio finaliza y la concesión pasa a los nuevos titulares. */
+  verificacionFinal: (expedienteId: string, observaciones?: string) => datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/verificacion-final`, { observaciones })),
   /** El PDF de la resolución (con la sesión: por eso no alcanza con un link). */
   archivoResolucion: (expedienteId: string) => datos(backend.get<Blob>(`${CAMBIO}/${expedienteId}/resolucion/archivo`, { responseType: 'blob' })),
 }

@@ -1,7 +1,12 @@
 // Reglas de la decisión de Recaudación (caso de uso, pasos 12-13). Las mismas que valida el
 // backend (tramites/circuito/validaciones: validarDecisionDeuda), para avisar antes de mandar.
 
-export type DecisionDeuda = 'APTO' | 'NO_APTO'
+import type { AptoNoApto } from './backend.types'
+
+export type DecisionDeuda = AptoNoApto
+
+/** Adonde pasa el cambio cuando Recaudación lo da por apto (o le da curso con deuda). */
+export const SIGUIENTE_A_RECAUDACION = 'Distrito'
 
 interface Entrada {
   decision: DecisionDeuda | ''

@@ -11,6 +11,7 @@ const cambio = (nuevos: Partial<CambioBackend['cambio']> = {}): CambioBackend =>
     concesion: { id: '15', numero: '906', estado: 'VIGENTE', fechaOtorgamiento: null, padron: null, ubicacion: { departamento: null, localidad: null, distrito: null } },
     titularesActuales: [],
     domiciliosActuales: [],
+    titularesAnteriores: [],
     nuevosTitulares: [],
     nuevosDomicilios: [],
     cargaCompleta: false,

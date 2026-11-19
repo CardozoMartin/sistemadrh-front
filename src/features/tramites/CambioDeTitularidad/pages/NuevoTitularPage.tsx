@@ -15,6 +15,7 @@ import { TitularesDomiciliosFields } from '../../shared'
 import { PasosTramite } from '../../shared/components/PasosTramite'
 import { propuestaAFormulario } from '../adaptadores'
 import { estaEnCarga, type CambioBackend } from '../backend.types'
+import { nombres, numeroConcesion } from '../formato'
 import { useCambio, useCancelarCambio, useEnviarCambio, useGuardarTitularesCambio } from '../hooks'
 import { crearNuevoTitularSchema, type NuevoTitularForm } from '../schemas'
 
@@ -127,10 +128,10 @@ function NuevoTitular({ datos }: { datos: CambioBackend }) {
     })
   }
 
-  const titularActual = cambio.titularesActuales.map((t) => t.nombreCompleto).join(', ') || '—'
+  const titularActual = nombres(cambio.titularesActuales) || '—'
   const resumen = [
     ['Expediente', expediente.numero],
-    ['Concesión', cambio.concesion.numero ?? cambio.concesion.id],
+    ['Concesión', numeroConcesion(cambio.concesion)],
     ['Titular actual', titularActual],
     ['Documentación', papeles(cambio.documentacionPresentada.length)],
   ]
@@ -223,7 +224,7 @@ function NuevoTitular({ datos }: { datos: CambioBackend }) {
       <ConfirmDialog
         open={dialogo === 'enviar'}
         title="¿Desea crear el trámite?"
-        message={`Se enviará el cambio de titularidad de la concesión ${cambio.concesion.numero ?? cambio.concesion.id} (expediente ${expediente.numero}) a Recaudación.`}
+        message={`Se enviará el cambio de titularidad de la concesión ${numeroConcesion(cambio.concesion)} (expediente ${expediente.numero}) a Recaudación.`}
         confirmLabel="Sí, enviar"
         cancelLabel="Cancelar"
         onConfirm={confirmarEnvio}
