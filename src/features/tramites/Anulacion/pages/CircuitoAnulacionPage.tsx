@@ -17,9 +17,11 @@ import { DocumentacionRevision } from '../../shared/circuito/DocumentacionRevisi
 import { PanelDictamen, type TextosDictamen } from '../../shared/circuito/PanelDictamen'
 import { PanelRecaudacion, type HooksRecaudacion } from '../../shared/circuito/PanelRecaudacion'
 import { PanelResolucion, ResolucionCargada } from '../../shared/circuito/PanelResolucion'
-import { anulacionApi } from '../api'
 import type { Terminado } from '../../shared/circuito/terminado'
+import { anulacionApi } from '../api'
 import type { AnulacionBackend } from '../backend.types'
+import { CierreAnulacion } from '../components/CierreAnulacion'
+import { terminado as terminadoComo, ubicacionConcesion } from '../formato'
 import {
   useAnulacion,
   useChecklistAnulacion,
@@ -34,12 +36,6 @@ import {
 } from '../hooks'
 
 const TITULO = 'Expediente de anulación'
-
-const TERMINADO: Record<string, string> = {
-  FINALIZADO: 'Finalizado: la concesión quedó anulada',
-  RECHAZADO: 'Rechazado: la concesión sigue vigente',
-  ANULADO: 'Cancelado: iniciado por error',
-}
 
 const HOOKS_RECAUDACION: HooksRecaudacion = {
   useAntecedentes: useAntecedentesDeudaAnulacion,
@@ -68,7 +64,7 @@ const TEXTOS_RESOLUCION = {
 /**
  * Una anulación en el circuito de oficinas (backend real): dónde está, qué hace la oficina que la
  * tiene, los datos de la concesión que se anula y el historial completo.
- * Etapas con pantalla: Recaudación, Distrito, Jurídico y Secretaría General. Las demás se suman en los próximos incrementos.
+ * Etapas con pantalla: Recaudación, Distrito, Jurídico, Secretaría General y la baja en Catastro.
  */
 export default function CircuitoAnulacionPage() {
   const { expedienteId } = useParams()
@@ -114,7 +110,7 @@ export default function CircuitoAnulacionPage() {
             etapa={expediente.etapaNombre}
             tomadoPor={expediente.tomadoPor?.nombre ?? null}
             tomadoEn={expediente.tomadoEn}
-            terminado={a.estado === 'EN_TRAMITE' ? null : TERMINADO[a.estado]}
+            terminado={terminadoComo(a.estado)}
           />
         </Card>
 
@@ -254,6 +250,12 @@ const PANELES: Record<string, { titulo: string; icono: string; accion: string; c
       />
     ),
   },
+  CIERRE: {
+    titulo: 'Catastro · Baja de la concesión',
+    icono: 'task_alt',
+    accion: 'dar la baja',
+    contenido: (d, onTerminado) => <CierreAnulacion datos={d} onTerminado={onTerminado} />,
+  },
 }
 
 /** Jurídico (pasos 13-16): revisa la documentación presentada en Catastro y dictamina. */
@@ -275,8 +277,7 @@ function DictamenJuridico({ datos, onTerminado }: { datos: AnulacionBackend; onT
 /** La concesión que se anula: ubicación, titulares, motivo y papeles presentados en Catastro. */
 function DatosAnulacion({ datos }: { datos: AnulacionBackend }) {
   const { concesion, titulares, motivo, documentacionPresentada } = datos.anulacion
-  const u = concesion.ubicacion
-  const ubicacion = [u.localidad, u.departamento, u.distrito].filter(Boolean).join(' · ')
+  const ubicacion = ubicacionConcesion(concesion.ubicacion)
   return (
     <div className="flex flex-col gap-4">
       <ResolucionCargada expedienteId={datos.expediente.id} resolucion={datos.anulacion.resolucion} descargar={anulacionApi.archivoResolucion} />

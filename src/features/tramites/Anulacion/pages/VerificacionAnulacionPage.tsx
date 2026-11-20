@@ -12,16 +12,15 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { useFichaConcesion, type FichaConcesion } from '@/features/catastro/consultaConcesiones'
 import { esNoEncontrado, mensajeDeError } from '@/services/api/errors'
 import { nombres, numeroConcesion } from '../../CambioDeTitularidad/formato'
+import { errorMotivoCancelacion, MIN_MOTIVO_CANCELACION, motivoCancelacionValido } from '../../shared/circuito/motivo'
 import { PasosTramite } from '../../shared/components/PasosTramite'
-import { estaEnCarga, type AnulacionBackend } from '../backend.types'
+import type { AnulacionBackend } from '../backend.types'
+import { dondeQuedo, estaEnCarga } from '../formato'
 import { useAnulacion, useCancelarAnulacion, useEnviarAnulacion } from '../hooks'
 
 type Dialogo = 'cancelar' | 'enviar' | 'enviada' | null
 
 const TITULO = 'Verificación de Datos'
-
-/** Largo mínimo del motivo para cancelar (lo mismo exige el backend). */
-const MIN_MOTIVO = 10
 
 /**
  * Paso 2 (Catastro), caso de uso pasos 7-8: los datos de la concesión (titular, ubicación, vigencia,
@@ -68,7 +67,7 @@ export default function VerificacionAnulacionPage() {
         <EmptyState
           icon="lock"
           titulo="Esta anulación ya no está en Catastro"
-          descripcion={`Expediente ${expediente.numero}: ${estado === 'EN_TRAMITE' ? `está en ${expediente.oficinaNombre} (${expediente.etapaNombre})` : `quedó ${estado.toLowerCase()}`}.`}
+          descripcion={dondeQuedo(estado, expediente)}
         >
           <Button size="sm" onClick={() => navigate(ROUTES.tramites.anulacion.inicio)}>
             Ir al inicio del trámite
@@ -90,7 +89,7 @@ function Verificacion({ datos }: { datos: AnulacionBackend }) {
   const cancelar = useCancelarAnulacion(id)
   const [dialogo, setDialogo] = useState<Dialogo>(null)
   const [motivoCancelacion, setMotivoCancelacion] = useState('')
-  const motivoValido = motivoCancelacion.trim().length >= MIN_MOTIVO
+  const motivoValido = motivoCancelacionValido(motivoCancelacion)
 
   const ocupado = enviar.isPending || cancelar.isPending
   const errorMutacion = enviar.error ?? cancelar.error
@@ -199,8 +198,8 @@ function Verificacion({ datos }: { datos: AnulacionBackend }) {
           id="motivo-cancelacion"
           label="Motivo"
           required
-          hint={`Al menos ${MIN_MOTIVO} caracteres.`}
-          error={motivoCancelacion && !motivoValido ? `Explique el motivo (al menos ${MIN_MOTIVO} caracteres).` : undefined}
+          hint={`Al menos ${MIN_MOTIVO_CANCELACION} caracteres.`}
+          error={errorMotivoCancelacion(motivoCancelacion)}
         >
           <textarea
             id="motivo-cancelacion"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { anioDeFecha, faltaEnResolucion, tamanio } from './resolucion'
+import { anioDeFecha, faltaEnResolucion, resolucionAFormData, tamanio } from './resolucion'
 
 const pdf = { name: 'Resolución 279.PDF', size: 120_000 }
 const ok = { numero: '279', fecha: '2026-11-10', archivo: pdf }
@@ -25,5 +25,21 @@ describe('faltaEnResolucion (Secretaría General)', () => {
   it('tamaño legible', () => {
     expect(tamanio(500)).toBe('1 KB')
     expect(tamanio(2.5 * 1024 * 1024)).toBe('2.5 MB')
+  })
+})
+
+describe('resolucionAFormData (POST …/resolucion, común a los trámites)', () => {
+  const archivo = new File(['%PDF'], 'resolucion.pdf', { type: 'application/pdf' })
+  it('manda número, año, fecha y el PDF', () => {
+    const form = resolucionAFormData({ numero: '279', anio: 2026, fecha: '2026-11-10', archivo })
+    expect(form.get('numero')).toBe('279')
+    expect(form.get('anio')).toBe('2026')
+    expect(form.get('fecha')).toBe('2026-11-10')
+    expect((form.get('archivo') as File).name).toBe('resolucion.pdf')
+    expect(form.has('observaciones')).toBe(false)
+  })
+  it('las observaciones van solo si hay', () => {
+    expect(resolucionAFormData({ numero: '1', anio: 2026, fecha: '2026-01-02', archivo, observaciones: '' }).has('observaciones')).toBe(false)
+    expect(resolucionAFormData({ numero: '1', anio: 2026, fecha: '2026-01-02', archivo, observaciones: 'Firmada' }).get('observaciones')).toBe('Firmada')
   })
 })

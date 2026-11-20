@@ -11,6 +11,9 @@ export const anulacionKeys = {
   checklist: () => [...anulacionKeys.all, 'checklist'] as const,
   enCurso: () => [...anulacionKeys.all, 'en-curso'] as const,
   anulacion: (id: string) => [...anulacionKeys.all, 'anulacion', id] as const,
+  /** Cuelgan de la anulación: se refrescan con cada acción sobre ella. */
+  recaudacion: (id: string) => [...anulacionKeys.anulacion(id), 'recaudacion'] as const,
+  avisoDeuda: (id: string) => [...anulacionKeys.anulacion(id), 'aviso-deuda'] as const,
 }
 
 // --- Consultas -----------------------------------------------------------------
@@ -65,12 +68,12 @@ export function useCancelarAnulacion(id: string) {
 
 /** Concesiones de los titulares y si tienen deuda. Cuelga de la anulación: se refresca con cada acción. */
 export function useAntecedentesDeudaAnulacion(id: string) {
-  return useQuery({ queryKey: [...anulacionKeys.anulacion(id), 'recaudacion'], queryFn: () => anulacionApi.antecedentesDeuda(id) })
+  return useQuery({ queryKey: anulacionKeys.recaudacion(id), queryFn: () => anulacionApi.antecedentesDeuda(id) })
 }
 
 /** Borrador del aviso de deuda: se pide al abrirlo y no se cachea (las deudas pueden cambiar). */
 export function useBorradorAvisoAnulacion(id: string, habilitado: boolean) {
-  return useQuery({ queryKey: [...anulacionKeys.anulacion(id), 'aviso-deuda'], queryFn: () => anulacionApi.borradorAvisoDeuda(id), enabled: habilitado, staleTime: 0, gcTime: 0 })
+  return useQuery({ queryKey: anulacionKeys.avisoDeuda(id), queryFn: () => anulacionApi.borradorAvisoDeuda(id), enabled: habilitado, staleTime: 0, gcTime: 0 })
 }
 
 /** Una acción del circuito: después se refrescan la anulación, sus antecedentes, el historial y las bandejas. */
@@ -97,3 +100,6 @@ export const useDictaminarAnulacion = (id: string, oficina: OficinaDictamen) =>
 
 /** Secretaría General: registra la resolución con su PDF y pasa a Catastro (baja). */
 export const useResolucionAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.resolucion)
+
+/** Catastro: baja (visto bueno final). La concesión queda ANULADA. */
+export const useVerificacionFinalAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.verificacionFinal)

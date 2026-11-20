@@ -6,6 +6,7 @@
 import { backend } from '@/services/api/backend'
 import type { FiltrosConcesiones, ResultadoConcesiones } from '@/features/catastro/consultaConcesiones'
 import type { titularesADto } from '../AltaDeConcesion/adaptadores'
+import { OPCIONES_MULTIPART, resolucionAFormData } from '../shared/circuito/resolucion'
 import type {
   AntecedentesDeuda,
   BorradorAvisoDeuda,
@@ -77,16 +78,8 @@ export const cambioTitularidadApi = {
   dictaminar: (expedienteId: string, oficina: 'distrito' | 'juridico', dto: DictamenDto) => datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/${oficina}`, dto)),
 
   /** Secretaría General: la resolución (número, año, fecha de firma, observaciones) con el PDF escaneado. */
-  resolucion: (expedienteId: string, dto: ResolucionDto) => {
-    const form = new FormData()
-    form.append('numero', dto.numero)
-    form.append('anio', String(dto.anio))
-    form.append('fecha', dto.fecha)
-    if (dto.observaciones) form.append('observaciones', dto.observaciones)
-    form.append('archivo', dto.archivo)
-    // El cliente manda JSON por defecto: con multipart, axios arma el boundary solo.
-    return datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/resolucion`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }))
-  },
+  resolucion: (expedienteId: string, dto: ResolucionDto) =>
+    datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/resolucion`, resolucionAFormData(dto), OPCIONES_MULTIPART)),
   /** Catastro: verificación final. El cambio finaliza y la concesión pasa a los nuevos titulares. */
   verificacionFinal: (expedienteId: string, observaciones?: string) => datos(backend.post<CambioBackend>(`${CAMBIO}/${expedienteId}/verificacion-final`, { observaciones })),
   /** El PDF de la resolución (con la sesión: por eso no alcanza con un link). */

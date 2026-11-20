@@ -8,7 +8,7 @@ import { backend } from '@/services/api/backend'
 import type { AntecedentesDeuda, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
 import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
 import type { VerificacionDeuda } from '../shared/circuito/recaudacion'
-import type { CargaResolucion } from '../shared/circuito/resolucion'
+import { OPCIONES_MULTIPART, resolucionAFormData, type CargaResolucion } from '../shared/circuito/resolucion'
 import type { AnulacionBackend, AnulacionEnLista, DocumentoChecklist } from './backend.types'
 
 const ANULACION = '/tramites/anulacion'
@@ -58,16 +58,12 @@ export const anulacionApi = {
 
   // --- Secretaría General (pasos 17-20) ------------------------------------------------
   /** La resolución (número, año, fecha de firma, observaciones) con el PDF escaneado. Pasa a Catastro. */
-  resolucion: (expedienteId: string, dto: CargaResolucion) => {
-    const form = new FormData()
-    form.append('numero', dto.numero)
-    form.append('anio', String(dto.anio))
-    form.append('fecha', dto.fecha)
-    if (dto.observaciones) form.append('observaciones', dto.observaciones)
-    form.append('archivo', dto.archivo)
-    // El cliente manda JSON por defecto: con multipart, axios arma el boundary solo.
-    return datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/resolucion`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }))
-  },
+  resolucion: (expedienteId: string, dto: CargaResolucion) =>
+    datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/resolucion`, resolucionAFormData(dto), OPCIONES_MULTIPART)),
   /** El PDF de la resolución (con la sesión: por eso no alcanza con un link). */
   archivoResolucion: (expedienteId: string) => datos(backend.get<Blob>(`${ANULACION}/${expedienteId}/resolucion/archivo`, { responseType: 'blob' })),
+
+  // --- Catastro: baja (visto bueno final) ---------------------------------------------
+  /** Con la resolución cargada: la anulación finaliza y la concesión queda ANULADA. */
+  verificacionFinal: (expedienteId: string, observaciones?: string) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/verificacion-final`, { observaciones })),
 }

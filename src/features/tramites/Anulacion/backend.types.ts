@@ -47,6 +47,3 @@ export interface AnulacionEnLista {
   motivo: string
   creadoEn: string
 }
-
-/** Catastro todavía puede «Iniciar anulación» (enviarla) o cancelarla: está en la carga. */
-export const estaEnCarga = (estado: EstadoAnulacion, etapa: string) => estado === 'EN_TRAMITE' && etapa === 'CARGA'

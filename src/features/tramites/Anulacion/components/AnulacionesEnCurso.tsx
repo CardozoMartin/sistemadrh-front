@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useDominio } from '@/hooks/useDominio'
 import { numeroConcesion } from '../../CambioDeTitularidad/formato'
-import { estaEnCarga } from '../backend.types'
+import { estaEnCarga } from '../formato'
 import { useAnulacionesEnCurso } from '../hooks'
 
 /** Anulaciones en trámite (backend real): las que siguen en la carga de Catastro se pueden continuar. */

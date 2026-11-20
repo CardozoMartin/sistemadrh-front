@@ -18,6 +18,20 @@ export interface ResolucionRegistrada {
   conArchivo: boolean
 }
 
+/** El cuerpo multipart de POST …/resolucion (las observaciones van solo si hay). */
+export function resolucionAFormData(dto: CargaResolucion): FormData {
+  const form = new FormData()
+  form.append('numero', dto.numero)
+  form.append('anio', String(dto.anio))
+  form.append('fecha', dto.fecha)
+  if (dto.observaciones) form.append('observaciones', dto.observaciones)
+  form.append('archivo', dto.archivo)
+  return form
+}
+
+/** Opciones del POST multipart: el cliente manda JSON por defecto (axios arma el boundary solo) y el PDF puede tardar. */
+export const OPCIONES_MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }
+
 /** Tope del PDF (igual que el backend: 10 MB). */
 export const MAX_MB_RESOLUCION = 10
 
