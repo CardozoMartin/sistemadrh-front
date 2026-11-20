@@ -342,6 +342,22 @@ Reglas (DRF «Documentacion PH», `ModeloDeDatos.md` §5 y `DRF_Usuarios_Permiso
 
 ## 3. Decisiones pendientes / deuda conocida
 
+### Cambio de Titularidad con el backend real (revisado el 20/11/2026)
+
+El circuito completo ya usa el backend (inicio → nuevo titular → Recaudación → Distrito → Jurídico → Secretaría →
+verificación final). La lista detallada de pendientes está en el backend:
+`backend/src/tramites/cambio-titularidad/README.md`, sección «Pendiente». Lo que toca al frontend:
+
+- **Historial de dueños en la ficha de la concesión**: el backend lo guarda, falta exponerlo y mostrarlo.
+- **Observar y corregir**: Distrito y Jurídico solo ofrecen «Apto / No apto»; no hay `reenviar` ni panel de
+  CORRECCIÓN en `CircuitoCambioPage` (a definir con la oficina).
+- **Cierre**: completar correo y teléfono del nuevo titular en la verificación final.
+- **Acoplamiento**: `CambioDeTitularidad` importa `DondeEsta`, `HistorialAlta`, `AvisoDeuda`, `Campo`, `altaKeys` y
+  `titularesADto` desde `AltaDeConcesion/`. Moverlos a `features/tramites/shared/`.
+- **Sacar lo viejo de json-server**: `GestionCambioTitularidadPage`, `etapas/` y la ruta `cambio-titularidad/expediente/:id`.
+
+### Notas de la etapa json-server (anteriores al backend real)
+
 1. **Sin transacción en el cierre del cambio**: primero se actualiza la concesión y después se cierra el expediente.
    Si lo segundo falla y se reintenta, los titulares anteriores quedarían duplicados. Con el backend real: una sola operación.
 2. **"Observar y devolver" en el cierre** (de `CierredeTramite.html`, no enlazado) no está implementado, ni en el Alta.
@@ -424,3 +440,4 @@ compartidas, `bloqueoDeCierre`, `ConfigTramite.Detalle` y el patrón de historia
 | 01/10/2026 | — | N° de expediente en tres partes (número / repartición / año en curso) en todos los inicios de trámite. |
 | 01/10/2026 | — | **Subdivisión** completa: editor de fracciones, datos por fracción, N° de concesión por fracción y cierre con concesiones nuevas. |
 | 01/10/2026 | — | **Pozo — Empresas perforadoras**: padrón, alta, modificación con historial, baja/reactivación y ABM de máquinas (RN-10/RN-11). |
+| 20/11/2026 | — | Unidas en `dev` las ramas `alta-concecion` (Distrito/Jurídico, número a Catastro, pendientes de padrón) y `cambioTitularidad` (circuito completo con el backend real). Pendientes anotados en la sección 3. |
