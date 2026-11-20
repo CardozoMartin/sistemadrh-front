@@ -1,7 +1,7 @@
 // Reglas del dictamen de Distrito y Jurídico (caso de uso: apto / no apto). Las mismas que valida
 // el backend (exigirMotivoSiNoEsApto y, en Distrito, exigirObservacionesTecnicas).
 
-import type { AptoNoApto } from './backend.types'
+import type { AptoNoApto } from './opciones'
 
 export type ResultadoDictamen = AptoNoApto
 
@@ -18,6 +18,6 @@ export function faltaEnDictamen(resultado: ResultadoDictamen | '', observaciones
   if (observacionesTecnicas && observaciones.trim().length < MINIMO_OBSERVACIONES_TECNICAS) {
     return `Ingrese las observaciones técnicas (al menos ${MINIMO_OBSERVACIONES_TECNICAS} caracteres).`
   }
-  if (resultado === 'NO_APTO' && !observaciones.trim()) return 'Indique el motivo del «No apto»: el cambio se rechaza y queda en el historial.'
+  if (resultado === 'NO_APTO' && !observaciones.trim()) return 'Indique el motivo del «No apto»: el trámite se rechaza y queda en el historial.'
   return null
 }

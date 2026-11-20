@@ -13,14 +13,18 @@ import { AvisoDeuda } from '../../AltaDeConcesion/components/circuito/AvisoDeuda
 import { DondeEsta } from '../../AltaDeConcesion/components/circuito/DondeEsta'
 import { HistorialAlta } from '../../AltaDeConcesion/components/circuito/HistorialAlta'
 import { nombres, numeroConcesion } from '../../CambioDeTitularidad/formato'
+import { DocumentacionRevision } from '../../shared/circuito/DocumentacionRevision'
+import { PanelDictamen, type TextosDictamen } from '../../shared/circuito/PanelDictamen'
 import { PanelRecaudacion, type HooksRecaudacion } from '../../shared/circuito/PanelRecaudacion'
 import type { Terminado } from '../../shared/circuito/terminado'
 import type { AnulacionBackend } from '../backend.types'
 import {
   useAnulacion,
+  useChecklistAnulacion,
   useAntecedentesDeudaAnulacion,
   useBorradorAvisoAnulacion,
   useCursoConDeudaAnulacion,
+  useDictaminarAnulacion,
   useNotificarDeudaAnulacion,
   useTomarAnulacion,
   useVerificarDeudaAnulacion,
@@ -42,10 +46,20 @@ const HOOKS_RECAUDACION: HooksRecaudacion = {
   useCursoConDeuda: useCursoConDeudaAnulacion,
 }
 
+const TEXTOS_DICTAMEN: TextosDictamen = {
+  informeTecnico: 'Informe técnico de la anulación',
+  avisoRechazo: 'La anulación se rechaza: la concesión sigue vigente. No se puede deshacer.',
+  botonRechazo: 'Rechazar la anulación',
+  tituloConfirmarRechazo: '¿Rechazar la anulación?',
+  mensajeConfirmarRechazo: 'El expediente queda rechazado y la concesión sigue vigente. No se puede deshacer.',
+  tituloRechazado: 'Anulación rechazada',
+  mensajeRechazado: (numero) => `El expediente ${numero} quedó rechazado: la concesión sigue vigente.`,
+}
+
 /**
  * Una anulación en el circuito de oficinas (backend real): dónde está, qué hace la oficina que la
  * tiene, los datos de la concesión que se anula y el historial completo.
- * Etapas con pantalla: Recaudación. Las demás se suman en los próximos incrementos.
+ * Etapas con pantalla: Recaudación, Distrito y Jurídico. Las demás se suman en los próximos incrementos.
  */
 export default function CircuitoAnulacionPage() {
   const { expedienteId } = useParams()
@@ -196,6 +210,43 @@ const PANELES: Record<string, { titulo: string; icono: string; accion: string; c
       />
     ),
   },
+  DISTRITO: {
+    titulo: 'Jefatura de Distrito · Dictamen técnico',
+    icono: 'water_drop',
+    accion: 'dictaminar',
+    contenido: (d, onTerminado) => (
+      <PanelDictamen
+        expediente={d.expediente}
+        concesion={numeroConcesion(d.anulacion.concesion)}
+        oficina="distrito"
+        useDictaminar={useDictaminarAnulacion}
+        textos={TEXTOS_DICTAMEN}
+        onTerminado={onTerminado}
+      />
+    ),
+  },
+  JURIDICO: {
+    titulo: 'Jurídico · Dictamen',
+    icono: 'gavel',
+    accion: 'dictaminar',
+    contenido: (d, onTerminado) => <DictamenJuridico datos={d} onTerminado={onTerminado} />,
+  },
+}
+
+/** Jurídico (pasos 13-16): revisa la documentación presentada en Catastro y dictamina. */
+function DictamenJuridico({ datos, onTerminado }: { datos: AnulacionBackend; onTerminado: (t: Terminado) => void }) {
+  const checklist = useChecklistAnulacion()
+  return (
+    <PanelDictamen
+      expediente={datos.expediente}
+      concesion={numeroConcesion(datos.anulacion.concesion)}
+      oficina="juridico"
+      useDictaminar={useDictaminarAnulacion}
+      textos={TEXTOS_DICTAMEN}
+      revision={<DocumentacionRevision checklist={checklist.data} presentados={datos.anulacion.documentacionPresentada} />}
+      onTerminado={onTerminado}
+    />
+  )
 }
 
 /** La concesión que se anula: ubicación, titulares, motivo y papeles presentados en Catastro. */

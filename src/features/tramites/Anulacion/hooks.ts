@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { altaKeys } from '../AltaDeConcesion/hooks'
 import { anulacionApi, type IniciarAnulacionDto } from './api'
+import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
 import type { AnulacionBackend } from './backend.types'
 
 export const anulacionKeys = {
@@ -91,3 +92,5 @@ export const useTomarAnulacion = (id: string) => useAccionAnulacion<void, unknow
 export const useVerificarDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.verificarDeuda)
 export const useCursoConDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.cursoConDeuda)
 export const useNotificarDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.notificarDeuda)
+export const useDictaminarAnulacion = (id: string, oficina: OficinaDictamen) =>
+  useAccionAnulacion(id, (i, dto: Dictamen) => anulacionApi.dictaminar(i, oficina, dto))

@@ -6,6 +6,7 @@
 // La búsqueda de concesiones vigentes es la misma del cambio de titularidad (BuscadorVigentes).
 import { backend } from '@/services/api/backend'
 import type { AntecedentesDeuda, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
+import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
 import type { VerificacionDeuda } from '../shared/circuito/recaudacion'
 import type { AnulacionBackend, AnulacionEnLista, DocumentoChecklist } from './backend.types'
 
@@ -50,4 +51,7 @@ export const anulacionApi = {
   /** El correo de cada titular con deuda (texto base), para revisarlo antes de enviarlo. */
   borradorAvisoDeuda: (expedienteId: string) => datos(backend.get<BorradorAvisoDeuda>(`${ANULACION}/${expedienteId}/recaudacion/aviso-deuda`)),
   notificarDeuda: (expedienteId: string, dto: NotificarDeudaDto) => datos(backend.post<ResultadoAvisoDeuda>(`${ANULACION}/${expedienteId}/recaudacion/notificar-deuda`, dto)),
+
+  // --- Distrito (pasos 11-13) y Jurídico: apto / no apto ---------------------------------
+  dictaminar: (expedienteId: string, oficina: OficinaDictamen, dto: Dictamen) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/${oficina}`, dto)),
 }
