@@ -1,36 +1,61 @@
-// Hooks de datos de la Anulación: las pantallas usan solo estos hooks.
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useDominio } from '@/hooks/useDominio'
-import { expedienteKeys } from '../../expedientes/hooks'
-import type { InicioSobreConcesionForm } from '../shared/inicioSobreConcesion'
-import { anulacionApi } from './api'
-import type { VerificacionAnulacionForm } from './schemas'
+// Hooks de datos de la Anulación de Concesión (backend real): consultas (useQuery) y acciones
+// (useMutation). Las pantallas usan solo estos hooks; nunca llaman a la API directamente.
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { altaKeys } from '../AltaDeConcesion/hooks'
+import { anulacionApi, type IniciarAnulacionDto } from './api'
+import type { AnulacionBackend } from './backend.types'
 
-export function useValidarInicioAnulacion() {
-  const { estadosPendientes } = useDominio()
-  return useMutation({ mutationFn: (inicio: InicioSobreConcesionForm) => anulacionApi.validarInicio(inicio, estadosPendientes) })
+export const anulacionKeys = {
+  all: ['backend', 'anulaciones'] as const,
+  checklist: () => [...anulacionKeys.all, 'checklist'] as const,
+  enCurso: () => [...anulacionKeys.all, 'en-curso'] as const,
+  anulacion: (id: string) => [...anulacionKeys.all, 'anulacion', id] as const,
 }
 
-/** Crea el expediente de anulación en la siguiente oficina (etapas y usuario salen del dominio). */
+// --- Consultas -----------------------------------------------------------------
+
+/** El checklist casi no cambia: se pide una vez por sesión. */
+export function useChecklistAnulacion() {
+  return useQuery({ queryKey: anulacionKeys.checklist(), queryFn: anulacionApi.checklist, staleTime: Infinity })
+}
+
+export function useAnulacionesEnCurso() {
+  return useQuery({ queryKey: anulacionKeys.enCurso(), queryFn: () => anulacionApi.listar() })
+}
+
+export function useAnulacion(id: string | undefined) {
+  return useQuery({ queryKey: anulacionKeys.anulacion(id ?? ''), queryFn: () => anulacionApi.obtener(id!), enabled: !!id })
+}
+
+// --- Acciones --------------------------------------------------------------------
+
+/** Después de cada acción: la anulación actualizada a la caché; la lista y las bandejas, a refrescar. */
+function useAlActualizar() {
+  const qc = useQueryClient()
+  return (anulacion: AnulacionBackend) => {
+    qc.setQueryData(anulacionKeys.anulacion(anulacion.expediente.id), anulacion)
+    void qc.invalidateQueries({ queryKey: anulacionKeys.enCurso() })
+    void qc.invalidateQueries({ queryKey: altaKeys.bandejas() })
+  }
+}
+
 export function useIniciarAnulacion() {
   const qc = useQueryClient()
-  const { etapas, usuarios, estadosPendientes } = useDominio()
+  const alActualizar = useAlActualizar()
   return useMutation({
-    mutationFn: ({ inicio, verificacion }: { inicio: InicioSobreConcesionForm; verificacion: VerificacionAnulacionForm }) => {
-      const [etapaCarga, etapaSiguiente] = etapas
-      // TODO(login): usuario autenticado. Mientras tanto, el primer usuario de la oficina.
-      const usuario = usuarios.find((u) => u.oficinaId === etapaCarga?.oficinaId)
-      if (!etapaCarga || !etapaSiguiente || !usuario) throw new Error('El circuito de oficinas no está configurado en el sistema.')
-      return anulacionApi.iniciar({
-        inicio,
-        verificacion,
-        estadosPendientes,
-        etapaId: etapaCarga.id,
-        oficinaOrigen: etapaCarga.oficinaId,
-        oficinaDestino: etapaSiguiente.oficinaId,
-        usuarioId: usuario.id,
-      })
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: expedienteKeys.all }),
+    mutationFn: (dto: IniciarAnulacionDto) => anulacionApi.iniciar(dto),
+    onSuccess: alActualizar,
+    // Aun si falla (ej: se cortó la respuesta), la lista se refresca: puede haberse creado igual.
+    onError: () => void qc.invalidateQueries({ queryKey: anulacionKeys.enCurso() }),
   })
+}
+
+export function useEnviarAnulacion(id: string) {
+  const alActualizar = useAlActualizar()
+  return useMutation({ mutationFn: () => anulacionApi.enviar(id), onSuccess: alActualizar })
+}
+
+export function useCancelarAnulacion(id: string) {
+  const alActualizar = useAlActualizar()
+  return useMutation({ mutationFn: (motivo: string) => anulacionApi.cancelar(id, motivo), onSuccess: alActualizar })
 }

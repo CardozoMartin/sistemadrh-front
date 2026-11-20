@@ -45,8 +45,8 @@ export const ROUTES = {
     anulacion: {
       /** Búsqueda de la concesión; al elegirla se asigna el expediente. */
       inicio: '/tramites/anulacion',
-      verificacion: (concesionId: string, numeroExpediente: string) =>
-        `/tramites/anulacion/verificacion?${new URLSearchParams({ concesion: concesionId, expediente: numeroExpediente })}`,
+      /** Verificación de datos e «Iniciar anulación» (backend real). */
+      verificacion: (expedienteId: string) => `/tramites/anulacion/${expedienteId}/verificacion`,
       gestion: (expedienteId: string) => `/tramites/anulacion/expediente/${expedienteId}`,
     },
     reduccionAmpliacion: {

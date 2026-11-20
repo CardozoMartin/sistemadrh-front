@@ -117,10 +117,10 @@ export interface CambioEnLista {
   creadoEn: string
 }
 
-/** GET /catalogos/documentos/CAMBIO_TITULARIDAD: un papel del checklist (solo los activos). */
+/** GET /catalogos/documentos/CAMBIO_TITULARIDAD (o ANULACION): un papel del checklist (solo los activos). */
 export interface DocumentoChecklist {
   id: number
-  tipoTramite: 'CAMBIO_TITULARIDAD'
+  tipoTramite: 'CAMBIO_TITULARIDAD' | 'ANULACION'
   descripcion: string
   obligatorio: boolean
   orden: number

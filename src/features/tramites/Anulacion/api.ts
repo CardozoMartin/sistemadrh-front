@@ -1,63 +1,36 @@
-// Peticiones de la Anulación de Concesión. Solo hablan con la API (sin estado ni caché):
-// eso lo resuelven los hooks de ./hooks.ts con TanStack Query.
-import { domiciliosDe, titularesDe, titularPrincipal } from '@/features/concesiones/datos'
-import type { EstadoExpediente, Expediente, Oficina } from '@/types/domain'
-import { expedientesApi } from '../../expedientes/api'
-import { validarInicioSobreConcesion, type InicioSobreConcesionForm } from '../shared/inicioSobreConcesion'
-import type { VerificacionAnulacionForm } from './schemas'
-import type { DatosExpedienteAnulacion } from './types'
+// Peticiones de la Anulación de Concesión al BACKEND REAL (NestJS + PostgreSQL).
+// Solo hablan con la API; el cacheo lo hacen los hooks (./hooks.ts).
+//
+// El backend valida todo (concesión vigente o ya anulada, sin otro trámite en curso, número de
+// expediente libre, checklist completo, motivo, etapa y expediente tomado) y devuelve el mensaje listo.
+// La búsqueda de concesiones vigentes es la misma del cambio de titularidad (BuscadorVigentes).
+import { backend } from '@/services/api/backend'
+import type { AnulacionBackend, AnulacionEnLista, DocumentoChecklist } from './backend.types'
 
-export interface IniciarAnulacionInput {
-  inicio: InicioSobreConcesionForm
-  verificacion: VerificacionAnulacionForm
-  estadosPendientes: EstadoExpediente[]
-  /** Etapa que completa Catastro (primera del circuito, de /etapas). */
-  etapaId: string
-  oficinaOrigen: Oficina
-  oficinaDestino: Oficina
-  usuarioId: string
+const ANULACION = '/tramites/anulacion'
+
+export interface IniciarAnulacionDto {
+  concesionId: string
+  expediente: { numero: string; reparticion: string; anio: number }
+  /** Ids de los papeles del checklist que trae el expediente. */
+  documentacionPresentada: number[]
+  motivo: string
 }
 
-export const anulacionApi = {
-  /** Paso 1: la concesión elegida y el expediente asignado sirven para iniciar (sin crear nada todavía). */
-  async validarInicio(inicio: InicioSobreConcesionForm, estadosPendientes: EstadoExpediente[]): Promise<void> {
-    await validarInicioSobreConcesion({ ...inicio, estadosPendientes })
-  },
+const datos = <T>(p: Promise<{ data: T }>) => p.then((r) => r.data)
 
-  /**
-   * Paso 2 («Iniciar anulación»): vuelve a validar y crea el expediente en la siguiente
-   * oficina del circuito. La concesión sigue vigente hasta la baja en el cierre.
-   */
-  async iniciar({ inicio, verificacion, estadosPendientes, etapaId, oficinaOrigen, oficinaDestino, usuarioId }: IniciarAnulacionInput): Promise<Expediente> {
-    const concesion = await validarInicioSobreConcesion({ ...inicio, estadosPendientes })
-    const ahora = new Date().toISOString()
-    const datos: DatosExpedienteAnulacion = {
-      numeroExpediente: inicio.numeroExpediente,
-      concesionId: concesion.id,
-      numeroConcesion: concesion.numeroConcesion ?? '',
-      titulares: titularesDe(concesion),
-      domicilios: domiciliosDe(concesion),
-      motivo: verificacion.motivo,
-      documentacionConfirmada: true,
-    }
-    return expedientesApi.crear({
-      numero: inicio.numeroExpediente,
-      tramiteId: 'anulacion',
-      estadoId: 'en_tramite',
-      oficinaId: oficinaDestino,
-      fechaInicio: ahora,
-      fechaActualizacion: ahora,
-      titular: titularPrincipal(concesion),
-      ubicacion: concesion.ubicacion,
-      poligono: concesion.poligono,
-      usoId: concesion.usoId,
-      caudalAsignado: concesion.caudalAsignado,
-      numeroConcesion: concesion.numeroConcesion,
-      concesionOrigenId: concesion.id,
-      resolucion: null,
-      padronRentasPendiente: false,
-      historial: [{ oficinaId: oficinaOrigen, etapaId, resultado: 'aprobado', fecha: ahora, usuarioId, observaciones: `Motivo: ${verificacion.motivo}` }],
-      datos,
-    })
-  },
+export const anulacionApi = {
+  // --- Consultas -------------------------------------------------------------------
+  /** Papeles del checklist del inicio (caso de uso, paso 5). */
+  checklist: () => datos(backend.get<DocumentoChecklist[]>('/catalogos/documentos/ANULACION')),
+  /** Anulaciones en trámite (con `todos`, también las terminadas). */
+  listar: (todos = false) => datos(backend.get<AnulacionEnLista[]>(ANULACION, { params: todos ? { todos: true } : undefined })),
+  obtener: (expedienteId: string) => datos(backend.get<AnulacionBackend>(`${ANULACION}/${expedienteId}`)),
+
+  // --- Catastro --------------------------------------------------------------------
+  iniciar: (dto: IniciarAnulacionDto) => datos(backend.post<AnulacionBackend>(ANULACION, dto)),
+  /** Iniciada por error: queda anulada (motivo obligatorio, 10 caracteres o más). */
+  cancelar: (expedienteId: string, observaciones: string) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/cancelar`, { observaciones })),
+  /** «Iniciar anulación»: la envía a Recaudación. */
+  enviar: (expedienteId: string) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/enviar`, {})),
 }
