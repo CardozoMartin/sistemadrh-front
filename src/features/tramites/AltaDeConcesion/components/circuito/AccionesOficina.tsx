@@ -9,9 +9,10 @@ import { Icon } from '@/components/ui/Icon'
 import { cn } from '@/lib/cn'
 import { mensajeDeError } from '@/services/api/errors'
 import { AvisoSoloConsulta, useActor } from '@/features/auth/useActor'
+import { useNotificaciones } from '@/features/notificaciones/context'
 import { altaConcesionApi, type ResultadoDictamen } from '../../api'
 import type { AltaBackend } from '../../backend.types'
-import { useAccionAlta, useAntecedentesDeuda, useCancelarDeuda, useTomar } from '../../hooks'
+import { useAccionAlta, useAltaMientrasEspera, useAntecedentesDeuda, useCancelarDeuda, useTomar } from '../../hooks'
 import { AvisoDeudaEditable } from './AvisoDeudaEditable'
 
 const hoy = () => new Date().toISOString().slice(0, 10)
@@ -35,8 +36,43 @@ export function Observaciones({ valor, onChange, obligatorio, placeholder }: { v
   )
 }
 
-/** Opciones tipo tarjeta (apto / observado / no apto, sin deuda / con deuda). */
-export function Opciones<T extends string>({ valor, onChange, opciones }: { valor: T | ''; onChange: (v: T) => void; opciones: { valor: T; texto: string; icono: string; color: string }[] }) {
+/**
+ * Opciones tipo tarjeta (apto / observado / no apto, sin deuda / con deuda).
+ * `grande`: botones grandes y centrados, con su color al pasar el mouse (`hover` de cada opción).
+ */
+export function Opciones<T extends string>({
+  valor,
+  onChange,
+  opciones,
+  grande,
+}: {
+  valor: T | ''
+  onChange: (v: T) => void
+  opciones: { valor: T; texto: string; icono: string; color: string; hover?: string }[]
+  grande?: boolean
+}) {
+  if (grande) {
+    return (
+      <div className="mx-auto grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+        {opciones.map((o) => (
+          <button
+            key={o.valor}
+            type="button"
+            onClick={() => onChange(o.valor)}
+            aria-pressed={valor === o.valor}
+            className={cn(
+              'flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 px-4 py-5 text-center text-lg font-bold shadow-sm transition-all',
+              'hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-4 focus-visible:ring-primary/30 focus-visible:outline-none active:translate-y-0',
+              valor === o.valor ? cn(o.color, 'shadow-md') : cn('border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300', o.hover),
+            )}
+          >
+            <Icon name={o.icono} className="text-[40px]!" />
+            {o.texto}
+          </button>
+        ))}
+      </div>
+    )
+  }
   return (
     <div className="grid gap-2 sm:grid-cols-3">
       {opciones.map((o) => (
@@ -346,44 +382,84 @@ function AccionRecaudacion({ alta, enEspera }: { alta: AltaBackend; enEspera: bo
 // Distrito y Jurídico
 // ---------------------------------------------------------------------------
 
+/** Lo que cambia entre Distrito y Jurídico: qué se pregunta, a dónde pasa y los ejemplos de la observación. */
+const DICTAMEN = {
+  distrito: {
+    siguiente: 'Jurídico',
+    pregunta: '¿Hay agua disponible y la concesión es viable técnicamente?',
+    ejemploApto: 'Observaciones del informe técnico (ej: inspección realizada, caudal verificado)',
+    ejemploNoApto: 'Motivo por el que no es viable (ej: no hay caudal disponible en el canal)',
+  },
+  juridico: {
+    siguiente: 'Secretaría General',
+    pregunta: '¿La documentación y los aspectos legales están en regla?',
+    ejemploApto: 'Observaciones del dictamen (ej: documentación completa, titularidad acreditada)',
+    ejemploNoApto: 'Motivo por el que no es apto (ej: no acredita la titularidad del inmueble)',
+  },
+}
+
+/**
+ * Distrito y Jurídico: el expediente pasa (Apto ► la oficina siguiente) o no pasa (No apto ►
+ * el trámite se rechaza), con la observación de la oficina, que queda en el historial.
+ */
 function AccionDictamen({ alta, oficina }: { alta: AltaBackend; oficina: 'distrito' | 'juridico' }) {
   const [resultado, setResultado] = useState<ResultadoDictamen | ''>('')
   const [observaciones, setObservaciones] = useState('')
   const [confirmar, setConfirmar] = useState(false)
   const accion = useAccionAlta(alta.id, (id, dto: { resultado: ResultadoDictamen; observaciones?: string }) => altaConcesionApi.dictaminar(id, oficina, dto))
-  const siguiente = oficina === 'distrito' ? 'Jurídico' : 'Secretaría General'
-  const pregunta =
-    oficina === 'distrito' ? '¿Hay agua disponible y la concesión es viable técnicamente?' : '¿La documentación y los aspectos legales están en regla?'
+  const { siguiente, pregunta, ejemploApto, ejemploNoApto } = DICTAMEN[oficina]
+  const opciones = [
+    {
+      valor: 'APTO' as const,
+      texto: `Apto (pasa a ${siguiente})`,
+      icono: 'check_circle',
+      color: 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300',
+      hover: 'hover:border-green-500 hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-500/10 dark:hover:text-green-300',
+    },
+    {
+      valor: 'NO_APTO' as const,
+      texto: 'No apto (no pasa)',
+      icono: 'block',
+      color: 'border-red-500 bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
+      hover: 'hover:border-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-500/10 dark:hover:text-red-300',
+    },
+  ]
 
-  const enviar = () => accion.mutate({ resultado: resultado as ResultadoDictamen, observaciones: observaciones || undefined })
+  const enviar = () => accion.mutate({ resultado: resultado as ResultadoDictamen, observaciones: observaciones.trim() || undefined })
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-slate-600 dark:text-slate-300">{pregunta}</p>
+      <Paso numero={1} titulo="Decisión">
+        {pregunta}
+      </Paso>
       <Opciones
         valor={resultado}
-        onChange={setResultado}
-        opciones={[
-          { valor: 'APTO', texto: 'Apto', icono: 'check_circle', color: 'border-green-500 bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-300' },
-          { valor: 'OBSERVADO', texto: 'Observado (corregir)', icono: 'edit_note', color: 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' },
-          { valor: 'NO_APTO', texto: 'No apto', icono: 'block', color: 'border-red-500 bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' },
-        ]}
+        onChange={(r) => {
+          // El motivo de un «No apto» no tiene que viajar con un «Apto» (y al revés).
+          if (r !== resultado) setObservaciones('')
+          setResultado(r)
+        }}
+        opciones={opciones}
+        grande
       />
-      <Observaciones
-        valor={observaciones}
-        onChange={setObservaciones}
-        obligatorio={resultado === 'OBSERVADO' || resultado === 'NO_APTO'}
-        placeholder={resultado === 'OBSERVADO' ? 'Qué tiene que corregir Catastro' : resultado === 'NO_APTO' ? 'Motivo por el que no es apto' : undefined}
-      />
+      <Paso numero={2} titulo="Observación">
+        {resultado === 'NO_APTO' ? 'Obligatoria: el motivo queda en el historial del expediente.' : 'Optativa: queda en el historial del expediente.'}
+      </Paso>
+      <Observaciones valor={observaciones} onChange={setObservaciones} obligatorio={resultado === 'NO_APTO'} placeholder={resultado === 'NO_APTO' ? ejemploNoApto : ejemploApto} />
+      {resultado && (
+        <p className={cn('text-xs', resultado === 'APTO' ? 'text-slate-500 dark:text-slate-400' : 'text-red-700 dark:text-red-300')}>
+          {resultado === 'APTO' ? `Pasa a ${siguiente}.` : 'El trámite termina: el expediente queda rechazado y la concesión no se otorga.'}
+        </p>
+      )}
       {accion.error && <Alert>{mensajeDeError(accion.error)}</Alert>}
       <div>
         <Button
           iconRight="send"
-          disabled={!resultado || (resultado !== 'APTO' && !observaciones.trim())}
+          disabled={!resultado || (resultado === 'NO_APTO' && !observaciones.trim())}
           loading={accion.isPending}
           onClick={() => (resultado === 'NO_APTO' ? setConfirmar(true) : enviar())}
         >
-          {resultado === 'APTO' ? `Apto: pasar a ${siguiente}` : resultado === 'OBSERVADO' ? 'Devolver a Catastro' : resultado === 'NO_APTO' ? 'Dictaminar no apto' : 'Registrar'}
+          {resultado === 'APTO' ? `Apto: pasar a ${siguiente}` : resultado === 'NO_APTO' ? 'No apto: no pasa' : 'Registrar'}
         </Button>
       </div>
       <ConfirmDialog
@@ -412,16 +488,30 @@ function AccionSecretaria({ alta }: { alta: AltaBackend }) {
   const resolucion = useAccionAlta(alta.id, altaConcesionApi.resolucion)
   const [datos, setDatos] = useState({ numero: '', anio: String(new Date().getFullYear()), fecha: hoy(), observaciones: '' })
   const asignado = alta.concesion.numero
+  // Pedido a Catastro y todavía sin cargar: se consulta cada 30 s para ver el número en cuanto lo carguen.
+  const pedido = !asignado && alta.concesion.solicitudNumero?.estado === 'PENDIENTE' ? alta.concesion.solicitudNumero : null
+  useAltaMientrasEspera(alta.id, !!pedido)
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
         <div>
           <p className="text-sm font-semibold text-slate-900 dark:text-white">1. Número de concesión</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{asignado ? 'Asignado. Va en la resolución.' : 'Se asigna el siguiente número libre (correlativo).'}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {asignado
+              ? 'Asignado por Catastro. Va en la resolución.'
+              : pedido
+                ? `Pedido a Catastro el ${new Date(pedido.solicitadoEn).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}: lo toma de su libro de concesiones. Cuando lo cargue aparece acá solo.`
+                : 'Se pide a Catastro, que lo toma de su libro de concesiones. A Catastro le llega el aviso.'}
+          </p>
         </div>
         {asignado ? (
           <span className="rounded-lg bg-green-50 px-4 py-2 text-lg font-bold text-green-700 dark:bg-green-500/10 dark:text-green-300">N° {asignado}</span>
+        ) : pedido ? (
+          <span className="inline-flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+            <Icon name="hourglass_top" className="text-[18px]!" />
+            Esperando a Catastro
+          </span>
         ) : (
           <Button iconLeft="pin" loading={numero.isPending} onClick={() => numero.mutate()}>
             Solicitar número
@@ -466,12 +556,26 @@ function AccionSecretaria({ alta }: { alta: AltaBackend }) {
 
 function AccionCierre({ alta }: { alta: AltaBackend }) {
   const navigate = useNavigate()
+  const { mostrarAviso } = useNotificaciones()
   const [observaciones, setObservaciones] = useState('')
   const accion = useAccionAlta(alta.id, (id, obs: string | undefined) => altaConcesionApi.verificacionFinal(id, obs))
+  // Hecha la verificación final, el alta queda pendiente de padrón y se suelta: se vuelve a la bandeja.
+  const verificar = () =>
+    accion.mutate(observaciones || undefined, {
+      onSuccess: () => {
+        mostrarAviso({
+          tono: 'exito',
+          icono: 'pending_actions',
+          titulo: `Expediente ${alta.numeroExpediente}: pendiente de padrón`,
+          detalle: 'Cuando Rentas informe el padrón, búsquelo en «Pendientes de padrón» de la bandeja de Catastro y cárguelo para finalizar el alta.',
+        })
+        navigate(ROUTES.catastro.bandeja)
+      },
+    })
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-slate-600 dark:text-slate-300">
-        Resolución {alta.concesion.resolucion?.numero}/{alta.concesion.resolucion?.anio} · Concesión N° {alta.concesion.numero}. Complete los datos que falten y haga la verificación final: después el trámite queda esperando el padrón de Rentas.
+        Resolución {alta.concesion.resolucion?.numero}/{alta.concesion.resolucion?.anio} · Concesión N° {alta.concesion.numero}. Complete los datos que falten y haga la verificación final. El alta queda <strong>pendiente de padrón</strong> en la bandeja de Catastro: cuando Rentas lo informe (30 a 60 días), se carga desde ahí y el trámite finaliza.
       </p>
       <div>
         <Button variant="secondary" iconLeft="edit" onClick={() => navigate(ROUTES.tramites.altaConcesion.datos(alta.id))}>
@@ -481,8 +585,8 @@ function AccionCierre({ alta }: { alta: AltaBackend }) {
       <Observaciones valor={observaciones} onChange={setObservaciones} />
       {accion.error && <Alert>{mensajeDeError(accion.error)}</Alert>}
       <div>
-        <Button iconRight="task_alt" loading={accion.isPending} onClick={() => accion.mutate(observaciones || undefined)}>
-          Verificación final: esperar padrón
+        <Button iconRight="task_alt" loading={accion.isPending} onClick={verificar}>
+          Verificación final: queda pendiente de padrón
         </Button>
       </div>
     </div>
@@ -495,9 +599,16 @@ function AccionPadron({ alta }: { alta: AltaBackend }) {
   const accion = useAccionAlta(alta.id, altaConcesionApi.padron)
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-slate-600 dark:text-slate-300">
-        Cuando Rentas informe el número de padrón (suele demorar 30 a 60 días), cárguelo para finalizar el trámite. La concesión queda vigente.
-      </p>
+      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <Icon name="pending_actions" className="mt-0.5 text-amber-600 dark:text-amber-300" />
+        <div className="text-sm text-amber-800 dark:text-amber-200">
+          <p className="font-semibold">Pendiente de padrón</p>
+          <p>
+            Concesión N° {alta.concesion.numero} · Resolución {alta.concesion.resolucion?.numero}/{alta.concesion.resolucion?.anio}. Cuando Rentas informe el número de padrón (suele demorar 30 a 60 días), cárguelo: el
+            trámite finaliza y la concesión queda vigente.
+          </p>
+        </div>
+      </div>
       <Campo etiqueta="Número de padrón de Rentas">
         <input value={padron} onChange={(e) => setPadron(e.target.value)} className={controlClass({ className: 'max-w-xs' })} />
       </Campo>
@@ -557,6 +668,12 @@ export function AccionesOficina({ alta }: { alta: AltaBackend }) {
 
   // Quien no es de la oficina donde está el expediente, lo consulta sin actuar.
   if (!actor.puedeActuarEn(circuito.oficinaActual)) return <AvisoSoloConsulta oficina={circuito.oficinaNombre} />
+
+  // Pendiente de padrón: no es un paso más del cierre. Cuando llega el padrón de Rentas, cualquiera
+  // de Catastro lo carga sin tomarlo antes (se toma solo al cargarlo), salvo que lo tenga otra persona.
+  if (circuito.etapa === 'ESPERA_PADRON' && (!circuito.tomadoPor || circuito.tomadoPor.id === usuarioId || actor.esAdministrador)) {
+    return <AccionPadron alta={alta} />
+  }
 
   // Paso 1: tomar el expediente.
   if (!circuito.tomadoPor) {

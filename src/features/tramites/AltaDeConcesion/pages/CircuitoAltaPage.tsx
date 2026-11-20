@@ -34,8 +34,8 @@ export function ConsultaAltaPage() {
 }
 
 /**
- * Los datos cargados del alta. En Recaudación no hacen falta para verificar la deuda: quedan
- * plegados y se abren con un botón.
+ * Los datos cargados del alta. En Recaudación, Distrito y Jurídico quedan plegados (la pantalla
+ * arranca con la decisión) y se abren con un botón.
  */
 function DatosDelExpediente({ alta, plegado }: { alta: AltaBackend; plegado: boolean }) {
   const [abierto, setAbierto] = useState(!plegado)
@@ -139,7 +139,7 @@ function ExpedienteAlta({ consulta }: { consulta: boolean }) {
               </Card>
             )}
 
-            <DatosDelExpediente alta={a} plegado={!consulta && a.circuito.etapa === 'RECAUDACION'} />
+            <DatosDelExpediente alta={a} plegado={!consulta && ['RECAUDACION', 'DISTRITO', 'JURIDICO'].includes(a.circuito.etapa)} />
           </div>
 
           {/* Historial y auditoría a pedido: no ocupan la pantalla hasta que se abren. */}

@@ -79,6 +79,9 @@ export interface AltaBackend {
     caudalAsignado: number | null
     fechaOtorgamiento: string | null
     resolucion: { numero: string; anio: number; fecha: string } | null
+    /** Pedido del número a Catastro: PENDIENTE (Catastro todavía no lo cargó) o ASIGNADA. */
+    // Optativo: el emulador de la demo no lo arma.
+    solicitudNumero?: { id: string; estado: 'PENDIENTE' | 'ASIGNADA'; solicitadoEn: string; asignadoEn: string | null } | null
   }
   titulares: TitularBackend[]
   domicilios: { id: string; calle: string; numero: string | null; departamento: string; localidad: string; distrito: string }[]

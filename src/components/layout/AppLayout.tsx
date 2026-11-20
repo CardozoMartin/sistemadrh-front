@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { Outlet, useLocation, useMatches } from 'react-router'
 import { DominioProvider } from '@/app/providers/DominioProvider'
 import { NotificacionesProvider } from '@/features/notificaciones/NotificacionesProvider'
+import { AvisoPedidosNumero } from '@/features/catastro/components/AvisoPedidosNumero'
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs'
 import { Sidebar } from './Sidebar'
 import { BarraRuta, Topnav } from './Topnav'
@@ -37,6 +38,8 @@ export function AppLayout() {
     // 2) Las notificaciones en vivo necesitan el router (links), la caché de consultas y el dominio.
     <DominioProvider>
       <NotificacionesProvider>
+        {/* Catastro: aviso de los pedidos de número de concesión de Secretaría General. */}
+        <AvisoPedidosNumero />
         {/* Barra institucional a todo el ancho; debajo, el menú lateral y el contenido. */}
         <div className="flex h-full w-full flex-col overflow-hidden">
           <Topnav onOpenSidebar={() => setSidebarOpen(true)} menuSiempre={pantallaCompleta} />

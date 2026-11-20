@@ -371,8 +371,10 @@ export function BandejaExpedientes({ oficina }: { oficina: OficinaBackend }) {
   if (bandeja.isPending) return <LoadingState mensaje="Cargando la bandeja…" className="py-10" />
   if (bandeja.isError) return <ErrorState error={bandeja.error} onRetry={() => void bandeja.refetch()} reintentando={bandeja.isFetching} className="mb-6" />
 
-  const sinRevisar = bandeja.data.filter((e) => !e.tomadoPor)
-  const pendientes = bandeja.data.filter((e) => e.tomadoPor)
+  // Las altas pendientes de padrón no son trabajo en curso: Catastro las tiene aparte (PendientesPadronPanel).
+  const enCurso = bandeja.data.filter((e) => e.etapa !== 'ESPERA_PADRON')
+  const sinRevisar = enCurso.filter((e) => !e.tomadoPor)
+  const pendientes = enCurso.filter((e) => e.tomadoPor)
   return (
     <>
       {oficina === 'distrito' && usuario?.distrito && !usuario.esAdministrador && (
@@ -381,7 +383,7 @@ export function BandejaExpedientes({ oficina }: { oficina: OficinaBackend }) {
           Expedientes correspondientes al <strong>{usuario.distrito.nombre}</strong> y aquellos sin ubicación registrada.
         </p>
       )}
-      <AvisoPlazos expedientes={bandeja.data} />
+      <AvisoPlazos expedientes={enCurso} />
       <Seccion oficina={oficina} grupo="sin-revisar" titulo="Ingresados sin asignar" descripcion="Expedientes recibidos en la oficina, pendientes de asignación." icono="move_to_inbox" expedientes={sinRevisar} vacio="No hay expedientes ingresados sin asignar." />
       <Seccion oficina={oficina} grupo="pendientes" titulo="Asignados" descripcion="Expedientes en trámite asignados a un agente de la oficina." icono="assignment_ind" expedientes={pendientes} vacio="No hay expedientes asignados." />
     </>

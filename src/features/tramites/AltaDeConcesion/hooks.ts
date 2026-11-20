@@ -3,6 +3,7 @@
 //
 // Cada acción del circuito devuelve el alta actualizada: se guarda en la caché y se
 // refrescan el historial y las bandejas (el expediente cambió de oficina o de estado).
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { altaConcesionApi } from './api'
 import type { AltaBackend, NotificarDeudaDto, OficinaBackend } from './backend.types'
@@ -30,6 +31,19 @@ export function useSituacionesLegales() {
 
 export function useAlta(id: string | undefined) {
   return useQuery({ queryKey: altaKeys.alta(id ?? ''), queryFn: () => altaConcesionApi.obtener(id!), enabled: !!id })
+}
+
+/**
+ * Mientras se espera algo de otra oficina (ej: Secretaría espera el número que carga Catastro),
+ * vuelve a leer el alta cada 30 segundos: el backend todavía no avisa en vivo.
+ */
+export function useAltaMientrasEspera(id: string, esperando: boolean) {
+  const qc = useQueryClient()
+  useEffect(() => {
+    if (!esperando) return
+    const intervalo = setInterval(() => void qc.invalidateQueries({ queryKey: altaKeys.alta(id), exact: true }), 30_000)
+    return () => clearInterval(intervalo)
+  }, [qc, id, esperando])
 }
 
 export function useHistorial(id: string | undefined) {

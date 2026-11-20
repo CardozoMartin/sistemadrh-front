@@ -25,6 +25,8 @@ export interface NotificacionesContextValue {
   noLeidas: number
   marcarTodasLeidas: () => void
   limpiarNotificaciones: () => void
+  /** Suma a la campana un evento que no llegó por la conexión en vivo (ej: un pedido de número encontrado al consultar). */
+  agregarNotificacion: (evento: EventoExpediente) => void
   /** Avisos emergentes visibles en este momento. */
   avisos: Aviso[]
   mostrarAviso: (aviso: Omit<Aviso, 'id'>) => void

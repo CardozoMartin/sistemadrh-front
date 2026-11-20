@@ -7,6 +7,8 @@ export interface EventoExpediente {
   tipo: 'nuevo' | 'derivado' | 'observado' | 'finalizado' | 'solicitud_numero' | 'numero_asignado'
   /** Solo en numero_asignado. */
   numeroConcesion?: string
+  /** Quién lo hizo (ej: quién de Secretaría pidió el número), si se sabe. */
+  usuarioNombre?: string
   expediente: {
     id: string
     numero: string
