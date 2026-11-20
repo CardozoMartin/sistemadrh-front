@@ -9,10 +9,10 @@ import type { CambioBackend } from '../../backend.types'
 import { faltaEnDictamen, MINIMO_OBSERVACIONES_TECNICAS, type ResultadoDictamen } from '../../dictamen'
 import { numeroConcesion } from '../../formato'
 import { useDictaminarCambio } from '../../hooks'
-import type { Terminado } from './terminado'
+import type { Terminado } from '../../../shared/circuito/terminado'
 import { DocumentacionRevision } from './DocumentacionRevision'
-import { opcionesAptoNoApto } from './opciones'
-import { ResumenEnvio } from './ResumenEnvio'
+import { opcionesAptoNoApto } from '../../../shared/circuito/opciones'
+import { ResumenEnvio } from '../../../shared/circuito/ResumenEnvio'
 
 const SIGUIENTE = { distrito: 'Jurídico', juridico: 'Secretaría General' } as const
 

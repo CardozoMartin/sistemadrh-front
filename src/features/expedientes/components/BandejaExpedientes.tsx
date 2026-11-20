@@ -19,6 +19,7 @@ import { useBandeja, useCancelarAlta, useLiberarAlta, useReasignables, useReasig
 const RUTA_TRABAJO: Record<string, (id: string) => string> = {
   ALTA_CONCESION: ROUTES.tramites.altaConcesion.circuito,
   CAMBIO_TITULARIDAD: ROUTES.tramites.cambioTitularidad.circuito,
+  ANULACION: ROUTES.tramites.anulacion.circuito,
   BAJA_POZO: ROUTES.pozo.baja,
 }
 

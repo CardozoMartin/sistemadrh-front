@@ -10,8 +10,8 @@ import type { CambioBackend } from '../../backend.types'
 import { faltaEnCierre } from '../../cierre'
 import { nombres, numeroConcesion } from '../../formato'
 import { useVerificacionFinalCambio } from '../../hooks'
-import { ResumenEnvio } from './ResumenEnvio'
-import type { Terminado } from './terminado'
+import { ResumenEnvio } from '../../../shared/circuito/ResumenEnvio'
+import type { Terminado } from '../../../shared/circuito/terminado'
 
 /**
  * Catastro, verificación final (paso 40 / «Trámites pendientes»): coteja la resolución con los datos

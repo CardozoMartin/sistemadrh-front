@@ -12,8 +12,8 @@ import type { CambioBackend } from '../../backend.types'
 import { numeroConcesion } from '../../formato'
 import { useResolucionCambio } from '../../hooks'
 import { anioDeFecha, faltaEnResolucion, MAX_MB_RESOLUCION, tamanio } from '../../resolucion'
-import { ResumenEnvio } from './ResumenEnvio'
-import type { Terminado } from './terminado'
+import { ResumenEnvio } from '../../../shared/circuito/ResumenEnvio'
+import type { Terminado } from '../../../shared/circuito/terminado'
 
 const hoy = () => new Date().toLocaleDateString('en-CA') // AAAA-MM-DD en hora local
 

@@ -48,6 +48,8 @@ export const ROUTES = {
       /** Verificación de datos e «Iniciar anulación» (backend real). */
       verificacion: (expedienteId: string) => `/tramites/anulacion/${expedienteId}/verificacion`,
       gestion: (expedienteId: string) => `/tramites/anulacion/expediente/${expedienteId}`,
+      /** El expediente en el circuito de oficinas (backend real). */
+      circuito: (expedienteId: string) => `/tramites/anulacion/circuito/${expedienteId}`,
     },
     reduccionAmpliacion: {
       /** Búsqueda de la concesión; al elegirla se asigna el expediente. */

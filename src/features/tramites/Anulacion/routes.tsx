@@ -18,6 +18,8 @@ export const anulacionRoute: RouteObject = {
         { path: ':expedienteId/verificacion', handle: { crumb: 'Verificación de datos' }, lazy: lazyPage(() => import('./pages/VerificacionAnulacionPage')) },
       ],
     },
+    // Circuito en el backend real: dónde está, qué hace la oficina que lo tiene (hoy: Recaudación) e historial.
+    { path: 'circuito/:expedienteId', handle: { crumb: 'Expediente' }, lazy: lazyPage(() => import('./pages/CircuitoAnulacionPage')) },
     // Circuito viejo de json-server (solo dev:mock / demo): como antes, solo Catastro.
     {
       element: (

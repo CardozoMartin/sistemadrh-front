@@ -1,11 +1,18 @@
 // Reglas de la decisión de Recaudación (caso de uso, pasos 12-13). Las mismas que valida el
 // backend (tramites/circuito/validaciones: validarDecisionDeuda), para avisar antes de mandar.
 
-import type { AptoNoApto } from './backend.types'
+import type { AptoNoApto } from './opciones'
 
 export type DecisionDeuda = AptoNoApto
 
-/** Adonde pasa el cambio cuando Recaudación lo da por apto (o le da curso con deuda). */
+/** POST …/recaudacion (común a los trámites): por cada concesión, si tiene deuda. */
+export interface VerificacionDeuda {
+  resultado: DecisionDeuda
+  concesiones: { concesionId: string; tieneDeuda: boolean }[]
+  observaciones?: string
+}
+
+/** Adonde pasa el trámite cuando Recaudación lo da por apto (o le da curso con deuda). */
 export const SIGUIENTE_A_RECAUDACION = 'Distrito'
 
 interface Entrada {

@@ -5,6 +5,8 @@
 // expediente libre, checklist completo, motivo, etapa y expediente tomado) y devuelve el mensaje listo.
 // La búsqueda de concesiones vigentes es la misma del cambio de titularidad (BuscadorVigentes).
 import { backend } from '@/services/api/backend'
+import type { AntecedentesDeuda, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
+import type { VerificacionDeuda } from '../shared/circuito/recaudacion'
 import type { AnulacionBackend, AnulacionEnLista, DocumentoChecklist } from './backend.types'
 
 const ANULACION = '/tramites/anulacion'
@@ -33,4 +35,19 @@ export const anulacionApi = {
   cancelar: (expedienteId: string, observaciones: string) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/cancelar`, { observaciones })),
   /** «Iniciar anulación»: la envía a Recaudación. */
   enviar: (expedienteId: string) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/enviar`, {})),
+
+  // --- Circuito: común a todos los trámites -----------------------------------------
+  /** La oficina que lo tiene lo toma para trabajarlo (antes de actuar). */
+  tomar: (expedienteId: string) => datos(backend.post(`/expedientes/${expedienteId}/tomar`)),
+
+  // --- Recaudación (caso de uso, pasos 8-10) ------------------------------------------
+  /** Titulares actuales, sus concesiones otorgadas (incluida la que se anula) y si tienen deuda. */
+  antecedentesDeuda: (expedienteId: string) => datos(backend.get<AntecedentesDeuda>(`${ANULACION}/${expedienteId}/recaudacion`)),
+  /** Apto: pasa a Distrito. No apto: queda en espera en Recaudación. */
+  verificarDeuda: (expedienteId: string, dto: VerificacionDeuda) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/recaudacion`, dto)),
+  /** En espera por deuda y no se pudo cobrar: pasa igual a Distrito con la nota de por qué. */
+  cursoConDeuda: (expedienteId: string, observaciones: string) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/recaudacion/curso-con-deuda`, { observaciones })),
+  /** El correo de cada titular con deuda (texto base), para revisarlo antes de enviarlo. */
+  borradorAvisoDeuda: (expedienteId: string) => datos(backend.get<BorradorAvisoDeuda>(`${ANULACION}/${expedienteId}/recaudacion/aviso-deuda`)),
+  notificarDeuda: (expedienteId: string, dto: NotificarDeudaDto) => datos(backend.post<ResultadoAvisoDeuda>(`${ANULACION}/${expedienteId}/recaudacion/notificar-deuda`, dto)),
 }

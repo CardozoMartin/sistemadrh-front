@@ -33,10 +33,13 @@ export function AnulacionesEnCurso() {
                 {a.titular ?? 'Sin titular'} · En {nombreOficina(a.oficinaActual)} · Iniciada {formatearFecha(a.creadoEn)}
               </p>
             </div>
-            {/* Ya enviada: su pantalla del circuito llega con los próximos incrementos. */}
-            {estaEnCarga(a.estado, a.etapa) && (
+            {estaEnCarga(a.estado, a.etapa) ? (
               <Button size="sm" iconRight="arrow_forward" onClick={() => navigate(ROUTES.tramites.anulacion.verificacion(a.expedienteId))}>
                 Continuar
+              </Button>
+            ) : (
+              <Button size="sm" variant="secondary" iconRight="visibility" onClick={() => navigate(ROUTES.tramites.anulacion.circuito(a.expedienteId))}>
+                Ver expediente
               </Button>
             )}
           </li>

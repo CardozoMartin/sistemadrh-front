@@ -18,7 +18,7 @@ import { DatosTitularesCambio } from '../components/circuito/DatosTitularesCambi
 import { DictamenCambio } from '../components/circuito/DictamenCambio'
 import { RecaudacionCambio } from '../components/circuito/RecaudacionCambio'
 import { ResolucionCambio, ResolucionCargada } from '../components/circuito/ResolucionCambio'
-import type { Terminado } from '../components/circuito/terminado'
+import type { Terminado } from '../../shared/circuito/terminado'
 import { nombres, numeroConcesion } from '../formato'
 import { useCambio, useTomarCambio } from '../hooks'
 

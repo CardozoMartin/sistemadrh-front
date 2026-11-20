@@ -59,3 +59,35 @@ export function useCancelarAnulacion(id: string) {
   const alActualizar = useAlActualizar()
   return useMutation({ mutationFn: (motivo: string) => anulacionApi.cancelar(id, motivo), onSuccess: alActualizar })
 }
+
+// --- Circuito y Recaudación ------------------------------------------------------
+
+/** Concesiones de los titulares y si tienen deuda. Cuelga de la anulación: se refresca con cada acción. */
+export function useAntecedentesDeudaAnulacion(id: string) {
+  return useQuery({ queryKey: [...anulacionKeys.anulacion(id), 'recaudacion'], queryFn: () => anulacionApi.antecedentesDeuda(id) })
+}
+
+/** Borrador del aviso de deuda: se pide al abrirlo y no se cachea (las deudas pueden cambiar). */
+export function useBorradorAvisoAnulacion(id: string, habilitado: boolean) {
+  return useQuery({ queryKey: [...anulacionKeys.anulacion(id), 'aviso-deuda'], queryFn: () => anulacionApi.borradorAvisoDeuda(id), enabled: habilitado, staleTime: 0, gcTime: 0 })
+}
+
+/** Una acción del circuito: después se refrescan la anulación, sus antecedentes, el historial y las bandejas. */
+function useAccionAnulacion<TInput, TOutput>(id: string, accion: (id: string, input: TInput) => Promise<TOutput>) {
+  const qc = useQueryClient()
+  return useMutation<TOutput, Error, TInput>({
+    mutationFn: (input) => accion(id, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: anulacionKeys.anulacion(id) })
+      void qc.invalidateQueries({ queryKey: anulacionKeys.enCurso() })
+      // Historial y bandejas de oficina (claves del alta: son comunes a todos los trámites).
+      void qc.invalidateQueries({ queryKey: altaKeys.historial(id) })
+      void qc.invalidateQueries({ queryKey: altaKeys.bandejas() })
+    },
+  })
+}
+
+export const useTomarAnulacion = (id: string) => useAccionAnulacion<void, unknown>(id, (i) => anulacionApi.tomar(i))
+export const useVerificarDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.verificarDeuda)
+export const useCursoConDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.cursoConDeuda)
+export const useNotificarDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.notificarDeuda)

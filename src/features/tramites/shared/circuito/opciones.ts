@@ -1,5 +1,7 @@
 // Las tarjetas «apto / no apto» de las oficinas (componente Opciones del alta), con los mismos colores.
-import type { AptoNoApto } from '../../backend.types'
+
+/** Lo que decide cada oficina (Recaudación, Distrito, Jurídico). */
+export type AptoNoApto = 'APTO' | 'NO_APTO'
 
 /** `apto` / `noApto`: el texto de cada tarjeta (ej: «No posee deuda (apto)»). */
 export const opcionesAptoNoApto = (apto: string, noApto: string): { valor: AptoNoApto; texto: string; icono: string; color: string }[] => [

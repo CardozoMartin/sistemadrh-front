@@ -4,15 +4,15 @@ import { controlClass } from '@/components/form/styles'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { mensajeDeError } from '@/services/api/errors'
-import { useBorradorAvisoCambio, useNotificarDeudaCambio } from '../../hooks'
+import type { HooksRecaudacion } from './PanelRecaudacion'
 
 type Texto = { asunto: string; cuerpo: string }
 
 /** Aviso de deuda por correo: el sistema arma el texto de cada titular con deuda y Recaudación lo puede editar. */
-export function AvisoDeudaCambio({ expedienteId }: { expedienteId: string }) {
+export function AvisoDeudaPanel({ expedienteId, hooks }: { expedienteId: string; hooks: HooksRecaudacion }) {
   const [abierto, setAbierto] = useState(false)
-  const borrador = useBorradorAvisoCambio(expedienteId, abierto)
-  const notificar = useNotificarDeudaCambio(expedienteId)
+  const borrador = hooks.useBorradorAviso(expedienteId, abierto)
+  const notificar = hooks.useNotificar(expedienteId)
   const [textos, setTextos] = useState<Record<string, Texto>>({})
   const correos = borrador.data?.correos ?? []
   const conEmail = correos.filter((c) => c.email)
