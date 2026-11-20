@@ -1,18 +1,6 @@
 import type { DomicilioForm } from '../shared/schemas/domicilio'
 import type { TitularForm } from '../shared/schemas/titular'
-import type { InicioCambioForm, NuevoTitularForm } from './schemas'
-
-/** Cambio de titularidad en carga en Catastro (antes de enviarse a Recaudación). Colección /borradoresCambioTitularidad. */
-export interface BorradorCambioTitularidad extends InicioCambioForm {
-  id: string
-  creado: string // ISO
-  actualizado: string // ISO
-  /** Copia para listar sin pedir la concesión. */
-  numeroConcesion: string
-  titularActual: string
-  /** Datos del nuevo titular (paso 2). */
-  datos?: NuevoTitularForm
-}
+import type { NuevoTitularForm } from './schemas'
 
 /**
  * Lo que se guarda en `expediente.datos` para un cambio de titularidad.

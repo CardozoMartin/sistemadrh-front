@@ -4,33 +4,41 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router'
 import { ROUTES } from '@/config/routes'
 import { Alert, EmptyState, ErrorState, LoadingState } from '@/components/feedback/States'
+import { Field } from '@/components/form'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { titularesDe, titularPrincipal, type Concesion } from '@/features/concesiones/datos'
-import { useConcesion } from '@/features/concesiones/hooks'
-import { useDominio } from '@/hooks/useDominio'
 import { esNoEncontrado, mensajeDeError } from '@/services/api/errors'
 import { TitularesDomiciliosFields } from '../../shared'
 import { PasosTramite } from '../../shared/components/PasosTramite'
-import { useBorradorCambio, useEliminarBorradorCambio, useEnviarCambio, useGuardarDatosCambio } from '../hooks'
-import { crearNuevoTitularSchema, nuevoTitularVacio, type NuevoTitularForm } from '../schemas'
-import type { BorradorCambioTitularidad } from '../types'
+import { propuestaAFormulario } from '../adaptadores'
+import { estaEnCarga, type CambioBackend } from '../backend.types'
+import { nombres, numeroConcesion } from '../formato'
+import { useCambio, useCancelarCambio, useEnviarCambio, useGuardarTitularesCambio } from '../hooks'
+import { crearNuevoTitularSchema, type NuevoTitularForm } from '../schemas'
 
 type Dialogo = 'cancelar' | 'enviar' | 'enviado' | null
 
 const TITULO = 'Pre-carga Nuevo Titular'
 
-/** Paso 2 (Catastro), prototipo preCargaTitular.html: datos del nuevo titular. Al seguir, el expediente pasa a Recaudación. */
+/** Largo mínimo del motivo para cancelar (lo mismo exige el backend). */
+const MIN_MOTIVO = 10
+
+const papeles = (n: number) => `${n} papel${n === 1 ? '' : 'es'} presentado${n === 1 ? '' : 's'}`
+
+/**
+ * Paso 2 (Catastro), caso de uso pasos 6-10: datos del o los nuevos titulares y su domicilio.
+ * Es una PROPUESTA: la concesión sigue a nombre del titular actual hasta que el trámite finaliza.
+ * Al confirmar, se guarda y el expediente pasa a Recaudación.
+ */
 export default function NuevoTitularPage() {
   const navigate = useNavigate()
-  const { borradorId } = useParams()
-  const borrador = useBorradorCambio(borradorId)
-  const concesion = useConcesion(borrador.data?.concesionId)
+  const { expedienteId } = useParams()
+  const cambio = useCambio(expedienteId)
 
-  if (borrador.isPending || (borrador.isSuccess && concesion.isPending)) {
+  if (cambio.isPending) {
     return (
       <>
         <PageHeader title={TITULO} />
@@ -39,90 +47,100 @@ export default function NuevoTitularPage() {
     )
   }
 
-  const error = borrador.error ?? concesion.error
-  if (error) {
+  if (cambio.isError) {
     return (
       <>
         <PageHeader title={TITULO} />
-        {esNoEncontrado(error) ? (
-          <EmptyState
-            icon="search_off"
-            titulo={borrador.isError ? 'No se encontró la carga' : 'La concesión ya no está vigente'}
-            descripcion={
-              borrador.isError
-                ? 'Puede que ya se haya enviado a la siguiente oficina o que haya sido descartada.'
-                : 'Descarte esta carga e inicie el trámite sobre una concesión vigente.'
-            }
-          >
+        {esNoEncontrado(cambio.error) ? (
+          <EmptyState icon="search_off" titulo="No se encontró el cambio de titularidad">
             <Button size="sm" onClick={() => navigate(ROUTES.tramites.cambioTitularidad.inicio)}>
               Ir al inicio del trámite
             </Button>
           </EmptyState>
         ) : (
-          <ErrorState
-            error={error}
-            onRetry={() => void (borrador.isError ? borrador.refetch() : concesion.refetch())}
-            reintentando={borrador.isFetching || concesion.isFetching}
-          />
+          <ErrorState error={cambio.error} onRetry={() => void cambio.refetch()} reintentando={cambio.isFetching} />
         )}
       </>
     )
   }
 
-  // key: si cambia el borrador se crea un formulario nuevo con sus datos.
-  return <NuevoTitular key={borrador.data!.id} borrador={borrador.data!} concesion={concesion.data!} />
+  const { expediente } = cambio.data
+  if (!estaEnCarga(cambio.data.cambio.estado, expediente.etapa)) {
+    return (
+      <>
+        <PageHeader title={TITULO} />
+        <EmptyState
+          icon="lock"
+          titulo="Este cambio ya no está en carga"
+          descripcion={`Expediente ${expediente.numero}: ${cambio.data.cambio.estado === 'EN_TRAMITE' ? `está en ${expediente.oficinaNombre} (${expediente.etapaNombre})` : `quedó ${cambio.data.cambio.estado.toLowerCase()}`}.`}
+        >
+          <Button size="sm" onClick={() => navigate(ROUTES.tramites.cambioTitularidad.inicio)}>
+            Ir al inicio del trámite
+          </Button>
+        </EmptyState>
+      </>
+    )
+  }
+
+  // key: si cambia el expediente se crea un formulario nuevo con sus datos.
+  return <NuevoTitular key={expediente.id} datos={cambio.data} />
 }
 
-function NuevoTitular({ borrador, concesion }: { borrador: BorradorCambioTitularidad; concesion: Concesion }) {
+function NuevoTitular({ datos }: { datos: CambioBackend }) {
   const navigate = useNavigate()
-  const dominio = useDominio()
-  const guardar = useGuardarDatosCambio(borrador.id)
-  const enviar = useEnviarCambio()
-  const eliminar = useEliminarBorradorCambio()
+  const id = datos.expediente.id
+  const { cambio, expediente } = datos
+  const guardar = useGuardarTitularesCambio(id)
+  const enviar = useEnviarCambio(id)
+  const cancelar = useCancelarCambio(id)
   const [dialogo, setDialogo] = useState<Dialogo>(null)
-  // Oficina que recibe el trámite: la segunda etapa del circuito (/etapas).
-  const oficinaDestino = dominio.nombreOficina(dominio.etapas[1]?.oficinaId ?? 'recaudacion')
-  const titularesActuales = useMemo(() => titularesDe(concesion), [concesion])
-  const schema = useMemo(() => crearNuevoTitularSchema(titularesActuales.map((t) => t.documento)), [titularesActuales])
+  const [motivo, setMotivo] = useState('')
+  const motivoValido = motivo.trim().length >= MIN_MOTIVO
+  const schema = useMemo(() => crearNuevoTitularSchema(cambio.titularesActuales.map((t) => t.documento ?? '')), [cambio.titularesActuales])
 
   const form = useForm<NuevoTitularForm>({
     resolver: zodResolver(schema),
-    defaultValues: borrador.datos ?? nuevoTitularVacio(),
+    defaultValues: propuestaAFormulario(datos),
     mode: 'onTouched',
   })
 
-  const ocupado = guardar.isPending || enviar.isPending || eliminar.isPending
-  const errorMutacion = guardar.error ?? enviar.error ?? eliminar.error
-
+  const ocupado = guardar.isPending || enviar.isPending || cancelar.isPending
+  const errorMutacion = guardar.error ?? enviar.error ?? cancelar.error
   const pedirConfirmacion = form.handleSubmit(() => setDialogo('enviar'))
 
-  /** «Anterior»: guarda lo cargado y vuelve a la búsqueda (la carga queda en «Cambios en carga»). */
-  function anterior() {
+  /** «Anterior»: guarda lo cargado (si está completo) y vuelve a la búsqueda; queda en «Cambios en trámite». */
+  async function anterior() {
+    if (!(await form.trigger())) return navigate(ROUTES.tramites.cambioTitularidad.inicio)
     guardar.mutate(form.getValues(), { onSuccess: () => navigate(ROUTES.tramites.cambioTitularidad.inicio) })
   }
 
   function confirmarEnvio() {
     setDialogo(null)
-    enviar.mutate({ borrador, datos: form.getValues(), concesion }, { onSuccess: () => setDialogo('enviado') })
+    enviar.mutate(form.getValues(), { onSuccess: () => setDialogo('enviado') })
   }
 
-  function descartar() {
-    setDialogo(null)
-    eliminar.mutate(borrador.id, { onSuccess: () => navigate(ROUTES.tramites.cambioTitularidad.inicio) })
+  function confirmarCancelacion() {
+    cancelar.mutate(motivo.trim(), {
+      onSuccess: () => {
+        setDialogo(null)
+        navigate(ROUTES.tramites.cambioTitularidad.inicio)
+      },
+    })
   }
 
+  const titularActual = nombres(cambio.titularesActuales) || '—'
   const resumen = [
-    ['Expediente', borrador.numeroExpediente],
-    ['Concesión', concesion.numeroConcesion ?? borrador.numeroConcesion],
-    ['Titular actual', titularPrincipal(concesion)],
-    ['Ubicación', `${concesion.ubicacion.localidad}, ${concesion.ubicacion.departamento} · Distrito ${concesion.ubicacion.distrito}`],
+    ['Expediente', expediente.numero],
+    ['Concesión', numeroConcesion(cambio.concesion)],
+    ['Titular actual', titularActual],
+    ['Documentación', papeles(cambio.documentacionPresentada.length)],
   ]
 
   return (
     <FormProvider {...form}>
       <PageHeader
         title={TITULO}
-        description={`Ingrese los datos personales o jurídicos del nuevo titular. La información será validada en la siguiente etapa por el área de ${oficinaDestino}.`}
+        description="Ingrese los datos personales o jurídicos del nuevo titular. La información será validada en la siguiente etapa por el área de Recaudación."
       />
 
       <div className="flex flex-col gap-6">
@@ -145,7 +163,9 @@ function NuevoTitular({ borrador, concesion }: { borrador: BorradorCambioTitular
               <Icon name="info" className="text-sky-600" />
               <div>
                 <p className="mb-1 font-semibold text-sky-800 dark:text-sky-200">Información importante</p>
-                <p className="text-sky-700 dark:text-sky-300">Recuerde que para continuar, deberá tener toda la documentación respaldatoria.</p>
+                <p className="text-sky-700 dark:text-sky-300">
+                  El nuevo titular queda como propuesta: la concesión sigue a nombre de {titularActual} hasta que el trámite finalice con la resolución.
+                </p>
               </div>
             </div>
           </form>
@@ -157,11 +177,11 @@ function NuevoTitular({ borrador, concesion }: { borrador: BorradorCambioTitular
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 md:px-8 dark:border-slate-700 dark:bg-slate-800/40">
-            <Button variant="ghost" size="sm" disabled={ocupado} loading={eliminar.isPending} onClick={() => setDialogo('cancelar')}>
+            <Button variant="ghost" size="sm" disabled={ocupado} onClick={() => setDialogo('cancelar')}>
               Cancelar trámite
             </Button>
             <div className="flex gap-3">
-              <Button variant="secondary" size="sm" iconLeft="arrow_back" loading={guardar.isPending} disabled={ocupado} onClick={anterior}>
+              <Button variant="secondary" size="sm" iconLeft="arrow_back" loading={guardar.isPending} disabled={ocupado} onClick={() => void anterior()}>
                 Anterior
               </Button>
               <Button size="sm" iconRight="arrow_forward" loading={enviar.isPending} disabled={ocupado} onClick={() => void pedirConfirmacion()}>
@@ -176,17 +196,36 @@ function NuevoTitular({ borrador, concesion }: { borrador: BorradorCambioTitular
         open={dialogo === 'cancelar'}
         tone="danger"
         title="¿Cancelar el trámite?"
-        message="Se descartará el cambio de titularidad en curso y se perderán los datos cargados."
-        confirmLabel="Sí, descartar"
+        message="El cambio de titularidad queda anulado (no se borra: queda en el historial con el motivo) y la concesión sigue igual."
+        confirmLabel="Sí, cancelar trámite"
         cancelLabel="Volver"
-        onConfirm={descartar}
+        loading={cancelar.isPending}
+        onConfirm={() => {
+          if (motivoValido) confirmarCancelacion()
+        }}
         onCancel={() => setDialogo(null)}
-      />
+      >
+        <Field
+          id="motivo-cancelacion"
+          label="Motivo"
+          required
+          hint={`Al menos ${MIN_MOTIVO} caracteres.`}
+          error={motivo && !motivoValido ? `Explique el motivo (al menos ${MIN_MOTIVO} caracteres).` : undefined}
+        >
+          <textarea
+            id="motivo-cancelacion"
+            rows={3}
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            className="rounded-lg border border-slate-300 p-3 text-sm dark:border-slate-600 dark:bg-slate-900"
+          />
+        </Field>
+      </ConfirmDialog>
       <ConfirmDialog
         open={dialogo === 'enviar'}
         title="¿Desea crear el trámite?"
-        message={`Se iniciará el cambio de titularidad de la concesión ${concesion.numeroConcesion} (expediente ${borrador.numeroExpediente}). El expediente se derivará a ${oficinaDestino}.`}
-        confirmLabel="Sí, crear trámite"
+        message={`Se enviará el cambio de titularidad de la concesión ${numeroConcesion(cambio.concesion)} (expediente ${expediente.numero}) a Recaudación.`}
+        confirmLabel="Sí, enviar"
         cancelLabel="Cancelar"
         onConfirm={confirmarEnvio}
         onCancel={() => setDialogo(null)}
@@ -194,10 +233,10 @@ function NuevoTitular({ borrador, concesion }: { borrador: BorradorCambioTitular
       <ConfirmDialog
         open={dialogo === 'enviado'}
         tone="success"
-        title="Trámite creado"
-        message={`El expediente ${borrador.numeroExpediente} se registró y fue derivado a ${oficinaDestino}.`}
-        confirmLabel="Ver seguimiento"
-        onConfirm={() => navigate(ROUTES.catastro.pendientes)}
+        title="Trámite enviado"
+        message={`El expediente ${expediente.numero} fue derivado a Recaudación.`}
+        confirmLabel="Volver al inicio"
+        onConfirm={() => navigate(ROUTES.tramites.cambioTitularidad.inicio)}
       />
     </FormProvider>
   )

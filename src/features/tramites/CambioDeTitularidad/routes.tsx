@@ -1,22 +1,47 @@
-import type { RouteObject } from 'react-router'
+import { Outlet, type RouteObject } from 'react-router'
 import { lazyPage } from '@/app/lazyPage'
+import { RutaConPermiso, RutaDeOficina } from '@/features/auth/components/RutaDeOficina'
 
 export const cambioDeTitularidadRoute: RouteObject = {
   path: 'cambio-titularidad',
   handle: { crumb: 'Cambio de Titularidad' },
   children: [
-    // Catastro: búsqueda de la concesión (+ asignación del expediente) y pre-carga del nuevo titular
-    { index: true, lazy: lazyPage(() => import('./pages/InicioCambioTitularidadPage')) },
+    // Catastro (backend real): búsqueda de la concesión, expediente y checklist; pre-carga del nuevo titular.
     {
-      path: ':borradorId/datos',
-      handle: { crumb: 'Pre-carga nuevo titular' },
-      lazy: lazyPage(() => import('./pages/NuevoTitularPage')),
+      element: (
+        <RutaConPermiso permiso="TITULARIDAD_GESTIONAR" accion="gestionar cambios de titularidad">
+          <Outlet />
+        </RutaConPermiso>
+      ),
+      children: [
+        { index: true, lazy: lazyPage(() => import('./pages/InicioCambioTitularidadPage')) },
+        {
+          path: ':expedienteId/datos',
+          handle: { crumb: 'Pre-carga nuevo titular' },
+          lazy: lazyPage(() => import('./pages/NuevoTitularPage')),
+        },
+      ],
     },
-    // Circuito: Recaudación → Distrito → Jurídico → Secretaría General → cierre en Catastro
+    // Circuito en el backend real: dónde está, qué hace la oficina que lo tiene (hoy: Recaudación) e historial.
     {
-      path: 'expediente/:expedienteId',
+      path: 'circuito/:expedienteId',
       handle: { crumb: 'Expediente' },
-      lazy: lazyPage(() => import('./pages/GestionCambioTitularidadPage')),
+      lazy: lazyPage(() => import('./pages/CircuitoCambioPage')),
+    },
+    // Circuito viejo de json-server (solo dev:mock / demo): como antes, solo Catastro.
+    {
+      element: (
+        <RutaDeOficina oficina="catastro">
+          <Outlet />
+        </RutaDeOficina>
+      ),
+      children: [
+        {
+          path: 'expediente/:expedienteId',
+          handle: { crumb: 'Expediente' },
+          lazy: lazyPage(() => import('./pages/GestionCambioTitularidadPage')),
+        },
+      ],
     },
   ],
 }

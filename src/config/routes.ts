@@ -37,8 +37,10 @@ export const ROUTES = {
     cambioTitularidad: {
       /** Búsqueda de la concesión; al elegirla se asigna el expediente. */
       inicio: '/tramites/cambio-titularidad',
-      datos: (borradorId: string) => `/tramites/cambio-titularidad/${borradorId}/datos`,
+      datos: (expedienteId: string) => `/tramites/cambio-titularidad/${expedienteId}/datos`,
       gestion: (expedienteId: string) => `/tramites/cambio-titularidad/expediente/${expedienteId}`,
+      /** El expediente en el circuito de oficinas (backend real). */
+      circuito: (expedienteId: string) => `/tramites/cambio-titularidad/circuito/${expedienteId}`,
     },
     anulacion: {
       /** Búsqueda de la concesión; al elegirla se asigna el expediente. */

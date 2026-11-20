@@ -15,6 +15,8 @@ npm run mock:events # solo el servidor de avisos en vivo (SSE)
 npm run mock:reset  # vuelve la base de la demo a su estado inicial (con el servidor frenado)
 node mock-server/build-db.mjs --out=otra.json  # genera la semilla en otro archivo, para probarla
 npm run build       # typecheck + build de producción
+npm test            # tests unitarios (Vitest): schemas, adaptadores y reglas sin pantalla
+npm run test:watch  # lo mismo, en modo observador
 ```
 
 Copiar `.env.example` a `.env.local` para cambiar la URL de la API o la demora simulada.
@@ -102,7 +104,7 @@ Las altas finalizadas son las **concesiones vigentes**; los cambios de titularid
 | `/catalogoSuministro`  | Fuentes, sistemas y cascada de canales por ubicación        |
 | `/expedientes`         | Expedientes en el circuito de oficinas (con polígono)       |
 | `/borradoresAlta`      | Altas en carga en Catastro, antes de enviarse a Recaudación |
-| `/borradoresCambioTitularidad` | Cambios de titularidad en carga en Catastro         |
+| `/borradoresCambioTitularidad` | Cambios de titularidad en carga (solo `dev:mock`/demo: con el backend real ya no se usa) |
 
 > ⚠️ No regenerar `db.json` (`mock:reset`) con `npm run dev` corriendo: json-server tiene la base en memoria y
 > en la próxima escritura pisa el archivo. Frenar el servidor, regenerar y volver a levantar.
@@ -194,13 +196,53 @@ oficinas intermedias son **compartidas** (`features/tramites/shared/etapas/`); c
 Con el backend real será `GET /concesiones` y solo cambia `concesiones/api.ts`. Los trámites sobre una
 concesión guardan `concesionOrigenId`; mientras uno está en curso, la concesión no admite otro.
 
-**Cambio de Titularidad** (`features/tramites/CambioDeTitularidad/`):
+**Cambio de Titularidad** (`features/tramites/CambioDeTitularidad/`). La parte de Catastro (inicio y carga)
+ya usa el **backend real** (`api.ts`, `hooks.ts`, `backend.types.ts`); el circuito por oficinas todavía no:
 
-1. `InicioCambioTitularidadPage` (prototipo `inicioTramite.html`) — `BuscadorConcesion` (N° de concesión, DNI,
-   CUIL/CUIT, distrito, fechas + «Buscar»). Con la concesión elegida, «Iniciar trámite» pide el N° de expediente y comienza.
-2. `NuevoTitularPage` (`preCargaTitular.html`) — datos del titular + domicilio legal; al menos un titular tiene que ser nuevo.
-   «Anterior» guarda y vuelve a la búsqueda; «Siguiente» envía a Recaudación.
-3. Circuito compartido. Recaudación verifica la deuda del titular actual **y** del nuevo.
+1. `InicioCambioTitularidadPage` — `BuscadorVigentes` busca en `GET /concesiones/buscar` solo concesiones
+   **vigentes** (N° de concesión, DNI/CUIL/CUIT, titular, distrito, fechas de otorgamiento). Con la concesión elegida
+   se cargan el N° de expediente y el **checklist de documentación** (`ChecklistDocumentacion`, de
+   `GET /catalogos/documentos/CAMBIO_TITULARIDAD`): sin los obligatorios no se inicia. «Iniciar trámite» hace
+   `POST /tramites/cambio-titularidad`; el backend vuelve a validar todo. Solo el error «El expediente … ya está
+   registrado» va junto al campo del número (`errores.ts → esNumeroOcupado`); el resto (concesión con otro trámite
+   en curso, no vigente…) va en el aviso general.
+2. `NuevoTitularPage` (ruta `:expedienteId/datos`) — datos del titular + domicilio legal; al menos un titular tiene
+   que ser nuevo. Es una **propuesta**: la concesión sigue a nombre del titular actual. «Anterior» guarda
+   (`PUT …/titulares`) y vuelve; «Siguiente» guarda y envía a Recaudación (`POST …/enviar`); «Cancelar trámite»
+   pide un motivo (10+ caracteres) y lo deja ANULADO (`POST …/cancelar`). `adaptadores.ts` rearma el formulario
+   con lo guardado (el distrito viaja por código).
+3. `CambiosEnCurso` — los cambios en trámite (`GET /tramites/cambio-titularidad`): dónde está cada uno y
+   «Continuar» los que siguen en carga. Pide el permiso `TITULARIDAD_GESTIONAR`.
+4. `CircuitoCambioPage` (ruta `circuito/:expedienteId`, se entra desde la bandeja de la oficina) — dónde está el
+   expediente, los datos del titular actual y del nuevo lado a lado (DNI, CUIT/CUIL, correo, padrón vinculado,
+   domicilio fiscal: `DatosTitularesCambio`), la documentación presentada y el historial. **Recaudación**
+   (`RecaudacionCambio`, pasos 11-17): toma el expediente, ve las concesiones del titular actual y del nuevo (incluida
+   la que se transfiere), con un resumen de deuda **por titular** —el dueño anterior y el nuevo, los dos se revisan—, y decide «posee deuda» sí/no con observaciones y confirmación. Sin deuda pasa a Distrito;
+   con deuda queda en espera, donde puede avisar por correo (texto editable) o darle curso con deuda con una nota.
+   Las reglas de la decisión están en `recaudacion.ts` (las mismas que valida el backend).
+   **Distrito** (`DictamenCambio`, pasos 18-24): con la ubicación de la concesión a la vista (y el visor), decide
+   «¿está apto?» sí/no con **observaciones técnicas obligatorias** (paso 20), confirmación con el resumen de lo que se envía y el
+   aviso «Trámite enviado». Apto: pasa a Jurídico; no apto: el
+   cambio se rechaza y la concesión sigue igual. Reglas en `dictamen.ts`; el mismo componente sirve para Jurídico.
+   Cada distrito ve solo sus expedientes (lo controla el backend: bandeja, lista y detalle); si alguien abre el de otro
+   distrito, la pantalla avisa «No puede ver este expediente».
+   **Jurídico** (pasos 25-31, versión preliminar): revisa la documentación presentada (`DocumentacionRevision`:
+   el checklist con lo que trajo el expediente) y decide apto / no apto con el mismo `DictamenCambio` (observaciones
+   opcionales, obligatorias si no apto), confirmación y «Trámite enviado». Apto: pasa a Secretaría General.
+   **Secretaría General** (pasos 32-38, versión preliminar): `ResolucionCambio` carga número, fecha de firma (el año
+   sale de la fecha), el PDF escaneado (obligatorio, solo PDF, hasta 10 MB) y observaciones; confirmación con el resumen
+   y «Trámite finalizado en Secretaría»: pasa a Catastro para la verificación final. Reglas en `resolucion.ts`. El PDF va
+   por multipart (`cambioTitularidadApi.resolucion`) y se abre con «Ver PDF» (`ResolucionCargada`: se baja con la
+   sesión como blob, un link directo no lleva el token).
+   **Verificación final en Catastro** (paso 40 y «Trámites pendientes»): `CierreCambio` pide confirmar que se cotejó la
+   resolución (el PDF se abre en «Verificación de datos»), observaciones, confirmación con el resumen (titular actual →
+   nuevo, resolución) y «Trámite finalizado». Recién ahí la concesión cambia de titular; con el cambio finalizado la
+   pantalla muestra «Titular anterior» y «Titular actual (desde la resolución)». Reglas en `cierre.ts`.
+   **Con esto, todo el circuito del cambio usa el backend real.**
+5. **Pendiente (deuda técnica):** sacar lo viejo en json-server (`GestionCambioTitularidadPage`, `etapas/`, ruta
+   `expediente/:id`); completar correo y teléfono del nuevo titular en el cierre; el modo demo no emula el PDF.
+6. **Tests** (`npm test`): `schemas.test.ts` (checklist, inicio, nuevo titular ≠ actual), `adaptadores.test.ts`
+   (backend ↔ formulario), `errores.test.ts` (qué error va junto al número) `recaudacion.test.ts` (decisión de deuda), `dictamen.test.ts` (apto / no apto), `resolucion.test.ts` (datos y PDF de la resolución) y `cierre.test.ts` (verificación final).
 4. `EtapaCierreCambio` (`CatastroFinalizacion.html`) — **carga final del titular** con el N° de resolución. Solo se
    habilita si todas las oficinas aprobaron y hay resolución. Hasta acá la concesión sigue a nombre del titular
    actual (el nuevo es «propuesto»); al finalizar cambia y los anteriores quedan en `datos.titularesAnteriores`.
