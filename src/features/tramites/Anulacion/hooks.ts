@@ -94,3 +94,6 @@ export const useCursoConDeudaAnulacion = (id: string) => useAccionAnulacion(id, 
 export const useNotificarDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.notificarDeuda)
 export const useDictaminarAnulacion = (id: string, oficina: OficinaDictamen) =>
   useAccionAnulacion(id, (i, dto: Dictamen) => anulacionApi.dictaminar(i, oficina, dto))
+
+/** Secretaría General: registra la resolución con su PDF y pasa a Catastro (baja). */
+export const useResolucionAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.resolucion)

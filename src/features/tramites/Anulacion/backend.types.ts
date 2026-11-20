@@ -4,6 +4,7 @@
 import type { Oficina } from '@/types/domain'
 import type { AvisoDeudaBackend } from '../AltaDeConcesion/backend.types'
 import type { DomicilioCambio, PersonaCambio, ResumenExpediente } from '../CambioDeTitularidad/backend.types'
+import type { ResolucionRegistrada } from '../shared/circuito/resolucion'
 
 export type { DocumentoChecklist } from '../CambioDeTitularidad/backend.types'
 
@@ -29,7 +30,7 @@ export interface AnulacionBackend {
     domicilios: DomicilioCambio[]
     /** Papeles del checklist que trajo el expediente al iniciar. */
     documentacionPresentada: { id: number; descripcion: string }[]
-    resolucion: { numero: string; fecha: string; observaciones: string | null; conArchivo: boolean } | null
+    resolucion: ResolucionRegistrada | null
   }
   avisoDeuda: AvisoDeudaBackend | null
 }

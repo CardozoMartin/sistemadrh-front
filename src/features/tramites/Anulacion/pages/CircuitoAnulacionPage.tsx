@@ -16,6 +16,8 @@ import { nombres, numeroConcesion } from '../../CambioDeTitularidad/formato'
 import { DocumentacionRevision } from '../../shared/circuito/DocumentacionRevision'
 import { PanelDictamen, type TextosDictamen } from '../../shared/circuito/PanelDictamen'
 import { PanelRecaudacion, type HooksRecaudacion } from '../../shared/circuito/PanelRecaudacion'
+import { PanelResolucion, ResolucionCargada } from '../../shared/circuito/PanelResolucion'
+import { anulacionApi } from '../api'
 import type { Terminado } from '../../shared/circuito/terminado'
 import type { AnulacionBackend } from '../backend.types'
 import {
@@ -26,6 +28,7 @@ import {
   useCursoConDeudaAnulacion,
   useDictaminarAnulacion,
   useNotificarDeudaAnulacion,
+  useResolucionAnulacion,
   useTomarAnulacion,
   useVerificarDeudaAnulacion,
 } from '../hooks'
@@ -56,10 +59,16 @@ const TEXTOS_DICTAMEN: TextosDictamen = {
   mensajeRechazado: (numero) => `El expediente ${numero} quedó rechazado: la concesión sigue vigente.`,
 }
 
+const TEXTOS_RESOLUCION = {
+  destino: 'Catastro · baja de la concesión',
+  mensajeRegistrada: (resolucion: string, expediente: string) =>
+    `Resolución ${resolucion} registrada. El expediente ${expediente} pasó a Catastro para la baja: recién ahí la concesión queda anulada.`,
+}
+
 /**
  * Una anulación en el circuito de oficinas (backend real): dónde está, qué hace la oficina que la
  * tiene, los datos de la concesión que se anula y el historial completo.
- * Etapas con pantalla: Recaudación, Distrito y Jurídico. Las demás se suman en los próximos incrementos.
+ * Etapas con pantalla: Recaudación, Distrito, Jurídico y Secretaría General. Las demás se suman en los próximos incrementos.
  */
 export default function CircuitoAnulacionPage() {
   const { expedienteId } = useParams()
@@ -231,6 +240,20 @@ const PANELES: Record<string, { titulo: string; icono: string; accion: string; c
     accion: 'dictaminar',
     contenido: (d, onTerminado) => <DictamenJuridico datos={d} onTerminado={onTerminado} />,
   },
+  SECRETARIA_GENERAL: {
+    titulo: 'Secretaría General · Resolución',
+    icono: 'history_edu',
+    accion: 'cargar la resolución',
+    contenido: (d, onTerminado) => (
+      <PanelResolucion
+        expediente={d.expediente}
+        concesion={numeroConcesion(d.anulacion.concesion)}
+        useResolucion={useResolucionAnulacion}
+        textos={TEXTOS_RESOLUCION}
+        onTerminado={onTerminado}
+      />
+    ),
+  },
 }
 
 /** Jurídico (pasos 13-16): revisa la documentación presentada en Catastro y dictamina. */
@@ -256,6 +279,7 @@ function DatosAnulacion({ datos }: { datos: AnulacionBackend }) {
   const ubicacion = [u.localidad, u.departamento, u.distrito].filter(Boolean).join(' · ')
   return (
     <div className="flex flex-col gap-4">
+      <ResolucionCargada expedienteId={datos.expediente.id} resolucion={datos.anulacion.resolucion} descargar={anulacionApi.archivoResolucion} />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm dark:bg-slate-900/40">
         <span>
           <span className="text-slate-500 dark:text-slate-400">Concesión {numeroConcesion(concesion)}: </span>

@@ -8,6 +8,7 @@ import { backend } from '@/services/api/backend'
 import type { AntecedentesDeuda, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
 import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
 import type { VerificacionDeuda } from '../shared/circuito/recaudacion'
+import type { CargaResolucion } from '../shared/circuito/resolucion'
 import type { AnulacionBackend, AnulacionEnLista, DocumentoChecklist } from './backend.types'
 
 const ANULACION = '/tramites/anulacion'
@@ -54,4 +55,19 @@ export const anulacionApi = {
 
   // --- Distrito (pasos 11-13) y Jurídico: apto / no apto ---------------------------------
   dictaminar: (expedienteId: string, oficina: OficinaDictamen, dto: Dictamen) => datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/${oficina}`, dto)),
+
+  // --- Secretaría General (pasos 17-20) ------------------------------------------------
+  /** La resolución (número, año, fecha de firma, observaciones) con el PDF escaneado. Pasa a Catastro. */
+  resolucion: (expedienteId: string, dto: CargaResolucion) => {
+    const form = new FormData()
+    form.append('numero', dto.numero)
+    form.append('anio', String(dto.anio))
+    form.append('fecha', dto.fecha)
+    if (dto.observaciones) form.append('observaciones', dto.observaciones)
+    form.append('archivo', dto.archivo)
+    // El cliente manda JSON por defecto: con multipart, axios arma el boundary solo.
+    return datos(backend.post<AnulacionBackend>(`${ANULACION}/${expedienteId}/resolucion`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }))
+  },
+  /** El PDF de la resolución (con la sesión: por eso no alcanza con un link). */
+  archivoResolucion: (expedienteId: string) => datos(backend.get<Blob>(`${ANULACION}/${expedienteId}/resolucion/archivo`, { responseType: 'blob' })),
 }
