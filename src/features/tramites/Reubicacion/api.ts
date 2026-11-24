@@ -7,7 +7,7 @@ import { backend } from '@/services/api/backend'
 import type { AntecedentesDeuda, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
 import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
 import type { VerificacionDeuda } from '../shared/circuito/recaudacion'
-import { OPCIONES_MULTIPART } from '../shared/circuito/resolucion'
+import { OPCIONES_MULTIPART, resolucionAFormData, type CargaResolucion } from '../shared/circuito/resolucion'
 import type { DocumentoChecklist, MotivoReubicacion, ReubicacionBackend, ReubicacionConAvisosArchivo, ReubicacionEnLista } from './backend.types'
 
 const REUBICACION = '/tramites/reubicacion'
@@ -89,4 +89,11 @@ export const reubicacionApi = {
 
   // --- Distrito (apto / no apto) y Jurídico (apto / observado / no apto) ---------------------
   dictaminar: (expedienteId: string, oficina: OficinaDictamen, dto: Dictamen) => datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/${oficina}`, dto)),
+
+  // --- Secretaría General ----------------------------------------------------------------
+  /** La resolución (número, año, fecha de firma, observaciones) con el PDF escaneado. Pasa a Catastro. */
+  resolucion: (expedienteId: string, dto: CargaResolucion) =>
+    datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/resolucion`, resolucionAFormData(dto), OPCIONES_MULTIPART)),
+  /** El PDF de la resolución (con la sesión: por eso no alcanza con un link). */
+  archivoResolucion: (expedienteId: string) => datos(backend.get<Blob>(`${REUBICACION}/${expedienteId}/resolucion/archivo`, { responseType: 'blob' })),
 }

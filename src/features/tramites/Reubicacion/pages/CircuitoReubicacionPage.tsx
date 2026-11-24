@@ -17,6 +17,8 @@ import { nombres, numeroConcesion } from '../../CambioDeTitularidad/formato'
 import { DocumentacionRevision } from '../../shared/circuito/DocumentacionRevision'
 import { PanelDictamen, type TextosDictamen } from '../../shared/circuito/PanelDictamen'
 import { PanelRecaudacion, type HooksRecaudacion } from '../../shared/circuito/PanelRecaudacion'
+import { PanelResolucion, ResolucionCargada } from '../../shared/circuito/PanelResolucion'
+import { reubicacionApi } from '../api'
 import type { Terminado } from '../../shared/circuito/terminado'
 import type { ReubicacionBackend } from '../backend.types'
 import { ComparacionPoligono, ComparacionServicio } from '../components/ComparacionReubicacion'
@@ -29,6 +31,7 @@ import {
   useCursoConDeudaReubicacion,
   useDictaminarReubicacion,
   useNotificarDeudaReubicacion,
+  useResolucionReubicacion,
   useReubicacion,
   useTomarReubicacion,
   useVerificarDeudaReubicacion,
@@ -54,11 +57,17 @@ const TEXTOS_DICTAMEN: TextosDictamen = {
   mensajeRechazado: (numero) => `El expediente ${numero} quedó rechazado: la concesión sigue como estaba.`,
 }
 
+const TEXTOS_RESOLUCION = {
+  destino: 'Catastro · cierre de la reubicación',
+  mensajeRegistrada: (resolucion: string, expediente: string) =>
+    `Resolución ${resolucion} registrada. El expediente ${expediente} pasó a Catastro para el cierre: recién ahí el nuevo lugar y la forma de servicio rigen en la concesión.`,
+}
+
 /**
  * Una reubicación en el circuito de oficinas (backend real): dónde está, qué hace la oficina que la
  * tiene, lo vigente contra lo propuesto y el historial completo.
- * Etapas con pantalla: Recaudación, Distrito, Jurídico y la corrección en Catastro (si Jurídico
- * la observa). Las demás se suman en las próximas entregas.
+ * Etapas con pantalla: Recaudación, Distrito, Jurídico, la corrección en Catastro (si Jurídico la
+ * observa) y Secretaría General. El cierre en Catastro se suma en la próxima entrega.
  */
 export default function CircuitoReubicacionPage() {
   const { expedienteId } = useParams()
@@ -230,6 +239,20 @@ const PANELES: Record<string, { titulo: string; icono: string; accion: string; c
     accion: 'dictaminar',
     contenido: (d, onTerminado) => <DictamenJuridico datos={d} onTerminado={onTerminado} />,
   },
+  SECRETARIA_GENERAL: {
+    titulo: 'Secretaría General · Resolución',
+    icono: 'history_edu',
+    accion: 'cargar la resolución',
+    contenido: (d, onTerminado) => (
+      <PanelResolucion
+        expediente={d.expediente}
+        concesion={numeroConcesion(d.reubicacion.concesion)}
+        useResolucion={useResolucionReubicacion}
+        textos={TEXTOS_RESOLUCION}
+        onTerminado={onTerminado}
+      />
+    ),
+  },
   CORRECCION: {
     titulo: 'Catastro · Corrección de lo observado',
     icono: 'rate_review',
@@ -284,6 +307,7 @@ function DatosReubicacion({ datos }: { datos: ReubicacionBackend }) {
   const ubicacion = ubicacionConcesion(concesion.ubicacion)
   return (
     <div className="flex flex-col gap-5">
+      <ResolucionCargada expedienteId={datos.expediente.id} resolucion={datos.reubicacion.resolucion} descargar={reubicacionApi.archivoResolucion} />
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm dark:bg-slate-900/40">
         <span>
           <span className="text-slate-500 dark:text-slate-400">Concesión {numeroConcesion(concesion)}: </span>

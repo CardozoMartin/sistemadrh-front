@@ -112,3 +112,6 @@ export const useCursoConDeudaReubicacion = (id: string) => useAccionReubicacion(
 export const useNotificarDeudaReubicacion = (id: string) => useAccionReubicacion(id, reubicacionApi.notificarDeuda)
 export const useDictaminarReubicacion = (id: string, oficina: OficinaDictamen) =>
   useAccionReubicacion(id, (i, dto: Dictamen) => reubicacionApi.dictaminar(i, oficina, dto))
+
+/** Secretaría General: registra la resolución con su PDF y pasa a Catastro (cierre). */
+export const useResolucionReubicacion = (id: string) => useAccionReubicacion(id, reubicacionApi.resolucion)
