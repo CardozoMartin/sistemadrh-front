@@ -7,8 +7,21 @@ import type { FormaServicioDto } from './api'
 import type { EstadoReubicacion, PoligonoReubicacion, ReubicacionBackend, SuministroReubicacion } from './backend.types'
 import type { ServicioReubicacionForm } from './schemas'
 
+/** Cómo se ve un trámite que ya no está en curso (en «Dónde está»). */
+export const TERMINADO: Record<Exclude<EstadoReubicacion, 'EN_TRAMITE'>, string> = {
+  FINALIZADO: 'Finalizado: el nuevo lugar y la forma de servicio rigen en la concesión',
+  RECHAZADO: 'Rechazado: la concesión sigue como estaba',
+  ANULADO: 'Cancelado: iniciado por error',
+}
+
+/** null mientras está en trámite; si terminó, cómo terminó. */
+export const terminado = (estado: EstadoReubicacion): string | null => (estado === 'EN_TRAMITE' ? null : TERMINADO[estado])
+
 /** Catastro todavía puede cargar la propuesta, enviarla o cancelarla: está en la carga. */
 export const estaEnCarga = (estado: EstadoReubicacion, etapa: string) => estado === 'EN_TRAMITE' && etapa === 'CARGA'
+
+/** Catastro puede editar la propuesta: en la carga o en la corrección de lo que observó Jurídico. */
+export const seEditaEnCatastro = (estado: EstadoReubicacion, etapa: string) => estado === 'EN_TRAMITE' && (etapa === 'CARGA' || etapa === 'CORRECCION')
 
 /** Por qué la propuesta ya no se puede editar: dónde está o cómo terminó. */
 export function dondeQuedo(estado: EstadoReubicacion, expediente: { numero: string; oficinaNombre: string; etapaNombre: string }): string {
@@ -39,6 +52,10 @@ export function caminoSuministro(s: SuministroReubicacion | null): string {
   const camino = [s.fuentes.join(' + '), s.sistemaDistribucion, s.canalPrincipal, s.canalSecundario, s.canalTerciario, s.canalCuarto, s.canalQuinto].filter(Boolean).join(' → ')
   return [camino || 'Sin fuente', s.desague && `desagüe: ${s.desague}`].filter(Boolean).join(' · ')
 }
+
+/** Un punto en una línea: «X 3599757.68 · Y 7019346.8 (Estación de bombeo)». */
+export const textoPunto = (p: { x: number | null; y: number | null; latitud: number; longitud: number; referencia: string | null } | null) =>
+  p ? `${p.x !== null && p.y !== null ? `X ${p.x} · Y ${p.y}` : `${p.latitud}, ${p.longitud}`}${p.referencia ? ` (${p.referencia})` : ''}` : 'sin punto de entrega cargado'
 
 /**
  * Lo que se precarga en el formulario de la forma de servicio: lo ya propuesto o, si todavía no

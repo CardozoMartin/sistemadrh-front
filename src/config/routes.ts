@@ -72,6 +72,8 @@ export const ROUTES = {
       inicio: '/tramites/reubicacion',
       /** Catastro: nuevo polígono y forma de servicio, y envío a Recaudación. */
       propuesta: (expedienteId: string) => `/tramites/reubicacion/${expedienteId}/propuesta`,
+      /** El expediente en el circuito de oficinas (backend real). */
+      circuito: (expedienteId: string) => `/tramites/reubicacion/circuito/${expedienteId}`,
     },
     permisos: '/tramites/permisos',
   },

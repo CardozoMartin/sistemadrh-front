@@ -75,6 +75,8 @@ export interface ReubicacionBackend {
     /** Lo que Catastro tiene que revisar antes de enviarla (no bloquea). */
     avisos: string[]
     cargaCompleta: boolean
+    /** Lo que pidió Jurídico al observarla (null si no está observada). */
+    observacion: { oficina: string; texto: string | null; fecha: string } | null
     resolucion: ResolucionRegistrada | null
   }
   avisoDeuda: AvisoDeudaBackend | null

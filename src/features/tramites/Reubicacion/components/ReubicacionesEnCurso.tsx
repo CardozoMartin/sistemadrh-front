@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useDominio } from '@/hooks/useDominio'
 import { numeroConcesion } from '../../CambioDeTitularidad/formato'
-import { estaEnCarga } from '../formato'
+import { seEditaEnCatastro } from '../formato'
 import { useReubicacionesEnCurso } from '../hooks'
 
 /** Reubicaciones en trámite (backend real): las que siguen en la carga de Catastro se pueden continuar. */
@@ -33,9 +33,13 @@ export function ReubicacionesEnCurso() {
                 {r.titular ?? 'Sin titular'} · {r.motivo} · En {nombreOficina(r.oficinaActual)} · Iniciada {formatearFecha(r.creadoEn)}
               </p>
             </div>
-            {estaEnCarga(r.estado, r.etapa) && (
+            {seEditaEnCatastro(r.estado, r.etapa) ? (
               <Button size="sm" iconRight="arrow_forward" onClick={() => navigate(ROUTES.tramites.reubicacion.propuesta(r.expedienteId))}>
-                Continuar
+                {r.etapa === 'CORRECCION' ? 'Corregir' : 'Continuar'}
+              </Button>
+            ) : (
+              <Button size="sm" variant="secondary" iconRight="visibility" onClick={() => navigate(ROUTES.tramites.reubicacion.circuito(r.expedienteId))}>
+                Ver expediente
               </Button>
             )}
           </li>

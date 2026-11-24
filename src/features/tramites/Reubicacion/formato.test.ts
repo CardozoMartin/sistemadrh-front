@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { coordenadaVacia } from '@/lib/coordenadas'
 import { suministroVacio } from '../shared/schemas/suministro'
 import type { ReubicacionBackend } from './backend.types'
-import { anilloExterior, caminoSuministro, diferenciaSuperficie, estaEnCarga, servicioADto, servicioInicial } from './formato'
+import { anilloExterior, caminoSuministro, diferenciaSuperficie, estaEnCarga, seEditaEnCatastro, servicioADto, servicioInicial, terminado, textoPunto } from './formato'
 
 const suministro = {
   fuentes: ['RIO SALI'],
@@ -28,6 +28,23 @@ describe('formato de la reubicación', () => {
     expect(estaEnCarga('EN_TRAMITE', 'CARGA')).toBe(true)
     expect(estaEnCarga('EN_TRAMITE', 'RECAUDACION')).toBe(false)
     expect(estaEnCarga('ANULADO', 'CARGA')).toBe(false)
+  })
+
+  it('Catastro edita en la carga y en la corrección de lo observado (pero no cancela en la corrección)', () => {
+    expect(seEditaEnCatastro('EN_TRAMITE', 'CORRECCION')).toBe(true)
+    expect(estaEnCarga('EN_TRAMITE', 'CORRECCION')).toBe(false)
+    expect(seEditaEnCatastro('EN_TRAMITE', 'JURIDICO')).toBe(false)
+  })
+
+  it('cómo terminó (null mientras está en trámite)', () => {
+    expect(terminado('EN_TRAMITE')).toBeNull()
+    expect(terminado('RECHAZADO')).toBe('Rechazado: la concesión sigue como estaba')
+  })
+
+  it('un punto en una línea: X/Y si las tiene, si no latitud/longitud', () => {
+    expect(textoPunto({ x: 3599757.68, y: 7019346.8, latitud: -26.9512, longitud: -64.9954, referencia: 'Estación de bombeo' })).toBe('X 3599757.68 · Y 7019346.8 (Estación de bombeo)')
+    expect(textoPunto({ x: null, y: null, latitud: -26.9512, longitud: -64.9954, referencia: null })).toBe('-26.9512, -64.9954')
+    expect(textoPunto(null)).toBe('sin punto de entrega cargado')
   })
 
   it('el anillo del GeoJSON pasa a [lat, lng] sin repetir el cierre', () => {

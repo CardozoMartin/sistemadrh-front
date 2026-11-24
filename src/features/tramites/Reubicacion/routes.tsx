@@ -18,5 +18,7 @@ export const reubicacionRoute: RouteObject = {
         { path: ':expedienteId/propuesta', handle: { crumb: 'Propuesta' }, lazy: lazyPage(() => import('./pages/PropuestaReubicacionPage')) },
       ],
     },
+    // Circuito en el backend real: dónde está, qué hace la oficina que lo tiene (hoy: Recaudación) e historial.
+    { path: 'circuito/:expedienteId', handle: { crumb: 'Expediente' }, lazy: lazyPage(() => import('./pages/CircuitoReubicacionPage')) },
   ],
 }

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { FormProvider, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useParams } from 'react-router'
@@ -10,7 +10,6 @@ import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { Spinner } from '@/components/ui/Spinner'
 import { esNoEncontrado, mensajeDeError } from '@/services/api/errors'
 import { nombres, numeroConcesion } from '../../CambioDeTitularidad/formato'
 import { errorMotivoCancelacion, MIN_MOTIVO_CANCELACION, motivoCancelacionValido } from '../../shared/circuito/motivo'
@@ -19,22 +18,21 @@ import { KmlUploadField } from '../../shared/components/KmlUploadField'
 import { PasosTramite } from '../../shared/components/PasosTramite'
 import { SuministroFields } from '../../shared/components/SuministroFields'
 import type { PoligonoForm } from '../../shared/schemas/poligono'
-import type { PuntoReubicacion, ReubicacionBackend } from '../backend.types'
-import { anilloExterior, caminoSuministro, diferenciaSuperficie, dondeQuedo, estaEnCarga, servicioADto, servicioInicial } from '../formato'
-import { useCancelarReubicacion, useEnviarReubicacion, useGuardarPoligonoReubicacion, useGuardarServicioReubicacion, useReubicacion } from '../hooks'
+import type { ReubicacionBackend } from '../backend.types'
+import { ComparacionPoligono } from '../components/ComparacionReubicacion'
+import { formatearFecha } from '@/config/expedientes'
+import { caminoSuministro, dondeQuedo, seEditaEnCatastro, servicioADto, servicioInicial, textoPunto } from '../formato'
+import { useCancelarReubicacion, useEnviarReubicacion, useGuardarPoligonoReubicacion, useGuardarServicioReubicacion, useReenviarReubicacion, useReubicacion } from '../hooks'
 import { servicioReubicacionSchema, type ServicioReubicacionForm } from '../schemas'
-
-// El mapa (Leaflet) se carga recién cuando hay algo para comparar.
-const EditorPoligonoMap = lazy(() => import('@/components/map/EditorPoligonoMap').then((m) => ({ default: m.EditorPoligonoMap })))
 
 type Dialogo = 'cancelar' | 'enviar' | 'enviada' | null
 
 const TITULO = 'Propuesta de Reubicación'
-const ha = (n: number) => `${n.toLocaleString('es-AR', { maximumFractionDigits: 2 })} ha`
 
 /**
  * Paso 2 (Catastro), caso de uso pasos 10-14: el nuevo lugar al que llega el agua (KML) y la forma
- * de servicio, comparados con lo vigente. «Enviar a Recaudación» lo pone en circulación. Nada
+ * de servicio, comparados con lo vigente. «Enviar a Recaudación» lo pone en circulación. Si Jurídico
+ * la observa, vuelve acá (corrección) y «Reenviar a Jurídico» la devuelve. Nada
  * cambia en la concesión hasta que la reubicación termine.
  */
 export default function PropuestaReubicacionPage() {
@@ -70,7 +68,7 @@ export default function PropuestaReubicacionPage() {
 
   const { expediente } = reubicacion.data
   const { estado } = reubicacion.data.reubicacion
-  if (!estaEnCarga(estado, expediente.etapa)) {
+  if (!seEditaEnCatastro(estado, expediente.etapa)) {
     return (
       <>
         <PageHeader title={TITULO} />
@@ -90,7 +88,12 @@ function Propuesta({ datos }: { datos: ReubicacionBackend }) {
   const navigate = useNavigate()
   const id = datos.expediente.id
   const { reubicacion, expediente } = datos
-  const enviar = useEnviarReubicacion(id)
+  // En la corrección (observada por Jurídico) se reenvía a Jurídico y ya no se puede cancelar.
+  const enCorreccion = expediente.etapa === 'CORRECCION'
+  const enviarNuevo = useEnviarReubicacion(id)
+  const reenviar = useReenviarReubicacion(id)
+  const enviar = enCorreccion ? reenviar : enviarNuevo
+  const destino = enCorreccion ? 'Jurídico' : 'Recaudación'
   const cancelar = useCancelarReubicacion(id)
   const [dialogo, setDialogo] = useState<Dialogo>(null)
   const [motivoCancelacion, setMotivoCancelacion] = useState('')
@@ -119,7 +122,20 @@ function Propuesta({ datos }: { datos: ReubicacionBackend }) {
       <PageHeader title={TITULO} description="Cargue el nuevo lugar al que llega el agua y la forma de servicio, y compárelos con lo vigente." />
 
       <div className="flex flex-col gap-6">
-        <PasosTramite previos={['Búsqueda']} actual={1} titulo="Propuesta" carga="Propuesta" />
+        <PasosTramite previos={['Búsqueda']} actual={1} titulo={enCorreccion ? 'Corrección de lo observado' : 'Propuesta'} carga="Propuesta" />
+
+        {reubicacion.observacion && (
+          <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            <Icon name="rate_review" className="shrink-0" />
+            <div>
+              <p className="font-semibold">
+                Observado por {reubicacion.observacion.oficina} el {formatearFecha(reubicacion.observacion.fecha)}
+              </p>
+              <p className="whitespace-pre-line">{reubicacion.observacion.texto ?? 'Sin detalle.'}</p>
+              <p className="mt-1 text-xs">Corrija lo que corresponda (polígono o forma de servicio) y reenvíela a {destino}.</p>
+            </div>
+          </div>
+        )}
 
         {/* Datos del expediente y de la concesión */}
         <Card>
@@ -157,20 +173,24 @@ function Propuesta({ datos }: { datos: ReubicacionBackend }) {
         <Card>
           <div className="flex flex-col gap-4 p-6">
             {!reubicacion.cargaCompleta && (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Para enviarla a Recaudación cargue el nuevo polígono y guarde la forma de servicio.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Para enviarla a {destino} cargue el nuevo polígono y guarde la forma de servicio.</p>
             )}
             {errorMutacion && <Alert>{mensajeDeError(errorMutacion)}</Alert>}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/40">
-            <Button variant="ghost" size="sm" disabled={ocupado} onClick={() => setDialogo('cancelar')}>
-              Cancelar trámite
-            </Button>
+            {enCorreccion ? (
+              <span />
+            ) : (
+              <Button variant="ghost" size="sm" disabled={ocupado} onClick={() => setDialogo('cancelar')}>
+                Cancelar trámite
+              </Button>
+            )}
             <div className="flex gap-3">
               <Button variant="secondary" size="sm" iconLeft="arrow_back" disabled={ocupado} onClick={() => navigate(ROUTES.tramites.reubicacion.inicio)}>
                 Volver
               </Button>
               <Button size="sm" iconRight="send" loading={enviar.isPending} disabled={ocupado || !reubicacion.cargaCompleta} onClick={() => setDialogo('enviar')}>
-                Enviar a Recaudación
+                {enCorreccion ? 'Reenviar a Jurídico' : 'Enviar a Recaudación'}
               </Button>
             </div>
           </div>
@@ -202,8 +222,8 @@ function Propuesta({ datos }: { datos: ReubicacionBackend }) {
       </ConfirmDialog>
       <ConfirmDialog
         open={dialogo === 'enviar'}
-        title="¿Enviar la reubicación a Recaudación?"
-        message={`El expediente ${expediente.numero} se derivará a Recaudación. La concesión ${concesion} sigue como está hasta que la reubicación termine.`}
+        title={`¿${enCorreccion ? 'Reenviar' : 'Enviar'} la reubicación a ${destino}?`}
+        message={`El expediente ${expediente.numero} se derivará a ${destino}. La concesión ${concesion} sigue como está hasta que la reubicación termine.`}
         confirmLabel="Sí, enviar"
         cancelLabel="Cancelar"
         loading={enviar.isPending}
@@ -213,8 +233,8 @@ function Propuesta({ datos }: { datos: ReubicacionBackend }) {
       <ConfirmDialog
         open={dialogo === 'enviada'}
         tone="success"
-        title="Reubicación enviada"
-        message={`El expediente ${expediente.numero} fue derivado a Recaudación.`}
+        title={enCorreccion ? 'Reubicación reenviada' : 'Reubicación enviada'}
+        message={`El expediente ${expediente.numero} fue derivado a ${destino}.`}
         confirmLabel="Volver al inicio"
         onConfirm={() => navigate(ROUTES.tramites.reubicacion.inicio)}
       />
@@ -270,44 +290,7 @@ function SeccionPoligono({ datos }: { datos: ReubicacionBackend }) {
         {guardar.error && <Alert>{mensajeDeError(guardar.error)}</Alert>}
         {avisosArchivo.length > 0 && <Avisos titulo="Lectura del archivo" avisos={avisosArchivo} tono="info" />}
 
-        {propuesta.poligono && (
-          <>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
-                  <th />
-                  <th className="pb-1 font-medium">Vigente</th>
-                  <th className="pb-1 font-medium">Propuesto</th>
-                  <th className="pb-1 font-medium">Diferencia</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="py-1.5 pr-3 text-xs font-medium text-slate-500 uppercase dark:text-slate-400">Superficie</td>
-                  <td className="py-1.5 pr-3 tabular-nums">{vigente.poligono ? ha(vigente.poligono.superficieHa) : '—'}</td>
-                  <td className="py-1.5 pr-3 font-semibold tabular-nums">{ha(propuesta.poligono.superficieHa)}</td>
-                  <td className="py-1.5 text-xs font-semibold tabular-nums">{vigente.poligono ? diferenciaSuperficie(vigente.poligono.superficieHa, propuesta.poligono.superficieHa) : ''}</td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 pr-3 text-xs font-medium text-slate-500 uppercase dark:text-slate-400">Perímetro</td>
-                  <td className="py-1.5 pr-3 tabular-nums">{vigente.poligono ? `${Math.round(vigente.poligono.perimetroM)} m` : '—'}</td>
-                  <td className="py-1.5 pr-3 font-semibold tabular-nums">{Math.round(propuesta.poligono.perimetroM)} m</td>
-                  <td />
-                </tr>
-                <tr>
-                  <td className="py-1.5 pr-3 text-xs font-medium text-slate-500 uppercase dark:text-slate-400">Archivo</td>
-                  <td className="py-1.5 pr-3">{vigente.poligono?.archivo?.nombre ?? '—'}</td>
-                  <td className="py-1.5 pr-3">{propuesta.poligono.archivo?.nombre ?? '—'}</td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
-            <Suspense fallback={<div className="flex h-72 items-center justify-center"><Spinner className="size-5 text-primary" /></div>}>
-              <EditorPoligonoMap original={anilloExterior(vigente.poligono)} propuesta={anilloExterior(propuesta.poligono)} className="h-80" />
-            </Suspense>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Punteado: el lugar vigente. Relleno: el propuesto.</p>
-          </>
-        )}
+        {propuesta.poligono && <ComparacionPoligono vigente={vigente.poligono} propuesto={propuesta.poligono} />}
         {reubicacion.avisos.length > 0 && <Avisos titulo="Revise antes de enviar" avisos={reubicacion.avisos} tono="warning" />}
       </div>
     </Card>
@@ -379,9 +362,6 @@ function SeccionServicio({ datos }: { datos: ReubicacionBackend }) {
 }
 
 // --- Piezas ---------------------------------------------------------------------------
-
-const textoPunto = (p: PuntoReubicacion | null) =>
-  p ? `${p.x !== null && p.y !== null ? `X ${p.x} · Y ${p.y}` : `${p.latitud}, ${p.longitud}`}${p.referencia ? ` (${p.referencia})` : ''}` : 'sin punto de entrega cargado'
 
 function EncabezadoSeccion({ icono, titulo, descripcion }: { icono: string; titulo: string; descripcion: string }) {
   return (

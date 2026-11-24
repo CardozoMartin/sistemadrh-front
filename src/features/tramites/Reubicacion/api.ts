@@ -4,6 +4,9 @@
 // El backend valida todo (concesión vigente, sin otro trámite en curso, número de expediente
 // libre, checklist, motivo, KML, árbol de suministro, etapa y expediente tomado) y devuelve el mensaje listo.
 import { backend } from '@/services/api/backend'
+import type { AntecedentesDeuda, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
+import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
+import type { VerificacionDeuda } from '../shared/circuito/recaudacion'
 import { OPCIONES_MULTIPART } from '../shared/circuito/resolucion'
 import type { DocumentoChecklist, MotivoReubicacion, ReubicacionBackend, ReubicacionConAvisosArchivo, ReubicacionEnLista } from './backend.types'
 
@@ -66,4 +69,24 @@ export const reubicacionApi = {
   cancelar: (expedienteId: string, observaciones: string) => datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/cancelar`, { observaciones })),
   /** La envía a Recaudación (con el polígono y la forma de servicio cargados). */
   enviar: (expedienteId: string) => datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/enviar`, {})),
+  /** Corrigió lo que observó Jurídico: vuelve a Jurídico. */
+  reenviar: (expedienteId: string) => datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/reenviar`, {})),
+
+  // --- Circuito: común a todos los trámites -----------------------------------------
+  /** La oficina que lo tiene lo toma para trabajarlo (antes de actuar). */
+  tomar: (expedienteId: string) => datos(backend.post(`/expedientes/${expedienteId}/tomar`)),
+
+  // --- Recaudación ---------------------------------------------------------------------
+  /** Titulares actuales, sus concesiones otorgadas (incluida la que se reubica) y si tienen deuda. */
+  antecedentesDeuda: (expedienteId: string) => datos(backend.get<AntecedentesDeuda>(`${REUBICACION}/${expedienteId}/recaudacion`)),
+  /** Apto: pasa a Distrito. No apto: queda en espera en Recaudación. */
+  verificarDeuda: (expedienteId: string, dto: VerificacionDeuda) => datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/recaudacion`, dto)),
+  /** En espera por deuda y no se pudo cobrar: pasa igual a Distrito con la nota de por qué. */
+  cursoConDeuda: (expedienteId: string, observaciones: string) => datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/recaudacion/curso-con-deuda`, { observaciones })),
+  /** El correo de cada titular con deuda (texto base), para revisarlo antes de enviarlo. */
+  borradorAvisoDeuda: (expedienteId: string) => datos(backend.get<BorradorAvisoDeuda>(`${REUBICACION}/${expedienteId}/recaudacion/aviso-deuda`)),
+  notificarDeuda: (expedienteId: string, dto: NotificarDeudaDto) => datos(backend.post<ResultadoAvisoDeuda>(`${REUBICACION}/${expedienteId}/recaudacion/notificar-deuda`, dto)),
+
+  // --- Distrito (apto / no apto) y Jurídico (apto / observado / no apto) ---------------------
+  dictaminar: (expedienteId: string, oficina: OficinaDictamen, dto: Dictamen) => datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/${oficina}`, dto)),
 }
