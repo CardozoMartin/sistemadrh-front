@@ -67,7 +67,12 @@ export const ROUTES = {
       datos: (borradorId: string) => `/tramites/subdivision/${borradorId}/datos`,
       gestion: (expedienteId: string) => `/tramites/subdivision/expediente/${expedienteId}`,
     },
-    reubicacion: '/tramites/reubicacion',
+    reubicacion: {
+      /** Búsqueda de la concesión, expediente, checklist y motivo. */
+      inicio: '/tramites/reubicacion',
+      /** Catastro: nuevo polígono y forma de servicio, y envío a Recaudación. */
+      propuesta: (expedienteId: string) => `/tramites/reubicacion/${expedienteId}/propuesta`,
+    },
     permisos: '/tramites/permisos',
   },
 

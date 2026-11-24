@@ -10,7 +10,7 @@ export const RUTA_TRAMITE: Record<TipoTramite, string> = {
   anulacion: ROUTES.tramites.anulacion.inicio,
   reduccion_ampliacion: ROUTES.tramites.reduccionAmpliacion.inicio,
   subdivision: ROUTES.tramites.subdivision.inicio,
-  reubicacion: ROUTES.tramites.reubicacion,
+  reubicacion: ROUTES.tramites.reubicacion.inicio,
   permiso_uso: ROUTES.tramites.permisos,
 }
 
