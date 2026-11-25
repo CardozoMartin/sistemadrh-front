@@ -4,7 +4,8 @@
 // El backend valida todo (concesión vigente, sin otro trámite en curso, número de expediente
 // libre, checklist, motivo, KML, árbol de suministro, etapa y expediente tomado) y devuelve el mensaje listo.
 import { backend } from '@/services/api/backend'
-import type { AntecedentesDeuda, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
+import type { AntecedentesDeuda, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../shared/circuito/deuda.types'
+import { expedienteApi } from '../shared/circuito/expediente'
 import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
 import type { VerificacionDeuda } from '../shared/circuito/recaudacion'
 import { OPCIONES_MULTIPART, resolucionAFormData, type CargaResolucion } from '../shared/circuito/resolucion'
@@ -74,7 +75,7 @@ export const reubicacionApi = {
 
   // --- Circuito: común a todos los trámites -----------------------------------------
   /** La oficina que lo tiene lo toma para trabajarlo (antes de actuar). */
-  tomar: (expedienteId: string) => datos(backend.post(`/expedientes/${expedienteId}/tomar`)),
+  tomar: expedienteApi.tomar,
 
   // --- Recaudación ---------------------------------------------------------------------
   /** Titulares actuales, sus concesiones otorgadas (incluida la que se reubica) y si tienen deuda. */
@@ -96,4 +97,8 @@ export const reubicacionApi = {
     datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/resolucion`, resolucionAFormData(dto), OPCIONES_MULTIPART)),
   /** El PDF de la resolución (con la sesión: por eso no alcanza con un link). */
   archivoResolucion: (expedienteId: string) => datos(backend.get<Blob>(`${REUBICACION}/${expedienteId}/resolucion/archivo`, { responseType: 'blob' })),
+
+  // --- Catastro: cierre (visto bueno final) -------------------------------------------
+  /** Con la resolución cargada: la reubicación finaliza y lo propuesto rige en la concesión. */
+  verificacionFinal: (expedienteId: string, observaciones?: string) => datos(backend.post<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/verificacion-final`, { observaciones })),
 }

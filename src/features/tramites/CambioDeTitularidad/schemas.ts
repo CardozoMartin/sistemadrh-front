@@ -4,7 +4,6 @@ import { mismaPersona } from '@/features/concesiones/datos'
 import { domicilioSchema, domicilioVacio } from '../shared/schemas/domicilio'
 import { expedienteSchema } from '../shared/schemas/expediente'
 import { titularSchema, titularVacio } from '../shared/schemas/titular'
-import type { DocumentoChecklist } from './backend.types'
 
 // --- Paso 1: concesión elegida + expediente en papel + checklist de documentación ----------
 
@@ -17,11 +16,6 @@ export const inicioCambioSchema = z.object({
 })
 
 export type InicioCambioForm = z.infer<typeof inicioCambioSchema>
-
-/** Papeles obligatorios sin marcar (el backend controla lo mismo: flujo alterno 4.1). */
-export function faltantesDelChecklist<T extends Pick<DocumentoChecklist, 'id' | 'obligatorio'>>(checklist: T[], marcados: number[]): T[] {
-  return checklist.filter((d) => d.obligatorio && !marcados.includes(d.id))
-}
 
 // --- Paso 2: datos del nuevo titular --------------------------------------------------
 

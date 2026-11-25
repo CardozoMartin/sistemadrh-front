@@ -5,7 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/Stat
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useDominio } from '@/hooks/useDominio'
-import { numeroConcesion } from '../../CambioDeTitularidad/formato'
+import { numeroConcesion } from '../../shared/formato'
 import { estaEnCarga } from '../formato'
 import { useAnulacionesEnCurso } from '../hooks'
 

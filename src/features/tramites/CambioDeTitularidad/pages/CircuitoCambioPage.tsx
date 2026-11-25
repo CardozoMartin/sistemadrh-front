@@ -9,9 +9,9 @@ import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { AvisoSoloConsulta, useActor } from '@/features/auth/useActor'
 import { esNoEncontrado, mensajeDeError, toApiError } from '@/services/api/errors'
-import { AvisoDeuda } from '../../AltaDeConcesion/components/circuito/AvisoDeuda'
-import { DondeEsta } from '../../AltaDeConcesion/components/circuito/DondeEsta'
-import { HistorialAlta } from '../../AltaDeConcesion/components/circuito/HistorialAlta'
+import { AvisoDeuda } from '../../shared/circuito/AvisoDeuda'
+import { DondeEsta } from '../../shared/circuito/DondeEsta'
+import { HistorialExpediente } from '../../shared/circuito/HistorialExpediente'
 import type { CambioBackend } from '../backend.types'
 import { CierreCambio } from '../components/circuito/CierreCambio'
 import { DatosTitularesCambio } from '../components/circuito/DatosTitularesCambio'
@@ -19,7 +19,7 @@ import { DictamenCambio } from '../components/circuito/DictamenCambio'
 import { RecaudacionCambio } from '../components/circuito/RecaudacionCambio'
 import { ResolucionCambio, ResolucionCargada } from '../components/circuito/ResolucionCambio'
 import type { Terminado } from '../../shared/circuito/terminado'
-import { nombres, numeroConcesion } from '../formato'
+import { nombres, numeroConcesion } from '../../shared/formato'
 import { useCambio, useTomarCambio } from '../hooks'
 
 const TITULO = 'Expediente de cambio de titularidad'
@@ -111,7 +111,7 @@ export default function CircuitoCambioPage() {
 
         <Card className="p-6">
           <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">Historial del expediente</h2>
-          <HistorialAlta expedienteId={expediente.id} />
+          <HistorialExpediente expedienteId={expediente.id} />
         </Card>
       </div>
 

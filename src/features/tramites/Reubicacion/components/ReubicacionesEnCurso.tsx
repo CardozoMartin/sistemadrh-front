@@ -5,8 +5,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/Stat
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useDominio } from '@/hooks/useDominio'
-import { numeroConcesion } from '../../CambioDeTitularidad/formato'
-import { seEditaEnCatastro } from '../formato'
+import { numeroConcesion } from '../../shared/formato'
+import { ETAPA_CORRECCION, seEditaEnCatastro } from '../formato'
 import { useReubicacionesEnCurso } from '../hooks'
 
 /** Reubicaciones en trámite (backend real): las que siguen en la carga de Catastro se pueden continuar. */
@@ -35,7 +35,7 @@ export function ReubicacionesEnCurso() {
             </div>
             {seEditaEnCatastro(r.estado, r.etapa) ? (
               <Button size="sm" iconRight="arrow_forward" onClick={() => navigate(ROUTES.tramites.reubicacion.propuesta(r.expedienteId))}>
-                {r.etapa === 'CORRECCION' ? 'Corregir' : 'Continuar'}
+                {r.etapa === ETAPA_CORRECCION ? 'Corregir' : 'Continuar'}
               </Button>
             ) : (
               <Button size="sm" variant="secondary" iconRight="visibility" onClick={() => navigate(ROUTES.tramites.reubicacion.circuito(r.expedienteId))}>

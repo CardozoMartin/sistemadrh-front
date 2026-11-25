@@ -1,7 +1,7 @@
 // Hooks de datos de la Anulación de Concesión (backend real): consultas (useQuery) y acciones
 // (useMutation). Las pantallas usan solo estos hooks; nunca llaman a la API directamente.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { altaKeys } from '../AltaDeConcesion/hooks'
+import { expedienteKeys } from '../shared/circuito/expediente'
 import { anulacionApi, type IniciarAnulacionDto } from './api'
 import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
 import type { AnulacionBackend } from './backend.types'
@@ -39,7 +39,7 @@ function useAlActualizar() {
   return (anulacion: AnulacionBackend) => {
     qc.setQueryData(anulacionKeys.anulacion(anulacion.expediente.id), anulacion)
     void qc.invalidateQueries({ queryKey: anulacionKeys.enCurso() })
-    void qc.invalidateQueries({ queryKey: altaKeys.bandejas() })
+    void qc.invalidateQueries({ queryKey: expedienteKeys.bandejas() })
   }
 }
 
@@ -85,8 +85,8 @@ function useAccionAnulacion<TInput, TOutput>(id: string, accion: (id: string, in
       void qc.invalidateQueries({ queryKey: anulacionKeys.anulacion(id) })
       void qc.invalidateQueries({ queryKey: anulacionKeys.enCurso() })
       // Historial y bandejas de oficina (claves del alta: son comunes a todos los trámites).
-      void qc.invalidateQueries({ queryKey: altaKeys.historial(id) })
-      void qc.invalidateQueries({ queryKey: altaKeys.bandejas() })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.historial(id) })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.bandejas() })
     },
   })
 }

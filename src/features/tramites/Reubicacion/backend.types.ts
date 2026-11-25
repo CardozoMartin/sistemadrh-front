@@ -1,12 +1,12 @@
 // Respuestas del backend real para la Reubicación (GET /tramites/reubicacion…).
 // Mismos nombres que devuelve el backend (src/tramites/reubicacion/reubicacion.service.ts).
-// Personas, resumen del expediente y checklist son los mismos que el cambio de titularidad.
+// Personas, resumen del expediente, checklist y deuda son comunes a los trámites (shared).
 import type { Oficina } from '@/types/domain'
-import type { AvisoDeudaBackend } from '../AltaDeConcesion/backend.types'
-import type { PersonaCambio, ResumenExpediente } from '../CambioDeTitularidad/backend.types'
+import type { AvisoDeudaBackend } from '../shared/circuito/deuda.types'
 import type { ResolucionRegistrada } from '../shared/circuito/resolucion'
+import type { PersonaTramite, ResumenExpediente } from '../shared/tipos'
 
-export type { DocumentoChecklist } from '../CambioDeTitularidad/backend.types'
+export type { DocumentoChecklist } from '../shared/checklist'
 
 export type EstadoReubicacion = 'EN_TRAMITE' | 'FINALIZADO' | 'RECHAZADO' | 'ANULADO'
 
@@ -63,7 +63,7 @@ export interface ReubicacionBackend {
       ubicacion: { departamento: string | null; localidad: string | null; distrito: string | null }
     }
     /** Titulares vigentes (no cambian en una reubicación). */
-    titulares: PersonaCambio[]
+    titulares: PersonaTramite[]
     documentacionPresentada: { id: number; descripcion: string }[]
     /** Lo que rige hoy: sigue vigente hasta que la reubicación finaliza. */
     vigente: { poligono: PoligonoReubicacion | null; suministro: SuministroReubicacion | null; puntoEntrega: PuntoReubicacion | null }

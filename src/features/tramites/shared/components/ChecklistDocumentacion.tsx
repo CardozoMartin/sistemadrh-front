@@ -1,5 +1,5 @@
 import { Icon } from '@/components/ui/Icon'
-import type { DocumentoChecklist } from '../backend.types'
+import type { DocumentoChecklist } from '../checklist'
 
 interface Props {
   checklist: DocumentoChecklist[]

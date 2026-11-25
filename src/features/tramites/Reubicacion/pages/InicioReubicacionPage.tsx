@@ -8,19 +8,19 @@ import { FormSelectField, FormTextareaField } from '@/components/form'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AvisoObligatorios, EncabezadoTarjeta } from '@/components/ui/EncabezadoTarjeta'
-import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
 import type { ConcesionEncontrada } from '@/features/catastro/consultaConcesiones'
 import { toApiError } from '@/services/api/errors'
-import { BuscadorVigentes } from '../../CambioDeTitularidad/components/BuscadorVigentes'
-import { ChecklistDocumentacion } from '../../CambioDeTitularidad/components/ChecklistDocumentacion'
-import { esNumeroOcupado } from '../../CambioDeTitularidad/errores'
-import { numeroConcesion } from '../../CambioDeTitularidad/formato'
-import { faltantesDelChecklist } from '../../CambioDeTitularidad/schemas'
+import { BuscadorVigentes } from '../../shared/components/BuscadorVigentes'
+import { ChecklistDocumentacion } from '../../shared/components/ChecklistDocumentacion'
+import { esNumeroOcupado } from '../../shared/errores'
+import { numeroConcesion } from '../../shared/formato'
+import { faltantesDelChecklist } from '../../shared/checklist'
 import { NumeroExpedienteFields } from '../../shared/components/NumeroExpedienteFields'
 import { PasosTramite } from '../../shared/components/PasosTramite'
 import { expedienteVacio } from '../../shared/schemas/expediente'
 import type { DocumentoChecklist, MotivoReubicacion } from '../backend.types'
+import { NotaInfo } from '../components/Avisos'
 import { ReubicacionesEnCurso } from '../components/ReubicacionesEnCurso'
 import { useChecklistReubicacion, useIniciarReubicacion } from '../hooks'
 import { inicioReubicacionSchema, MOTIVOS_REUBICACION, type InicioReubicacionForm } from '../schemas'
@@ -94,12 +94,7 @@ export default function InicioReubicacionPage() {
       <div className="flex flex-col gap-6">
         <PasosTramite previos={['Búsqueda']} actual={0} titulo="Búsqueda de la concesión" carga="Propuesta" />
 
-        <div className="flex gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm dark:border-sky-500/30 dark:bg-sky-500/10">
-          <Icon name="info" className="text-sky-600" />
-          <p className="text-sky-700 dark:text-sky-300">
-            La concesión no se mueve: conserva su número, magnitud, titular y padrón. Lo que cambia es el lugar, dentro de la propiedad, al que llega el agua.
-          </p>
-        </div>
+        <NotaInfo>La concesión no se mueve: conserva su número, magnitud, titular y padrón. Lo que cambia es el lugar, dentro de la propiedad, al que llega el agua.</NotaInfo>
 
         <BuscadorVigentes seleccionada={seleccionada} onSeleccionar={seleccionar} />
 

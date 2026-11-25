@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { useOpcionesFiltros, type ConcesionEncontrada, type FiltrosConcesiones } from '@/features/catastro/consultaConcesiones'
 import { formatearFecha } from '@/config/expedientes'
 import { cn } from '@/lib/cn'
-import { CONCESIONES_POR_PAGINA, useBuscarVigentes } from '../hooks'
+import { CONCESIONES_POR_PAGINA, useBuscarVigentes } from '../concesionesVigentes'
 
 interface Props {
   seleccionada: ConcesionEncontrada | null

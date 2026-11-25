@@ -2,6 +2,11 @@
 // (backend/src/tramites/alta-concesion/alta-concesion.respuesta.ts).
 import type { MultiPolygon } from 'geojson'
 import type { Superposicion } from '@/services/sig'
+import type { AvisoDeudaBackend, EstadoEmail } from '../shared/circuito/deuda.types'
+
+// Comunes a todos los trámites (viven en shared); se re-exportan para no cambiar los imports del alta.
+export type { AntecedentesDeuda, AvisoDeudaBackend, BorradorAvisoDeuda, EstadoEmail, NotificarDeudaDto, ResultadoAvisoDeuda } from '../shared/circuito/deuda.types'
+export type { ActuacionHistorial, EntradaHistorial } from '../shared/circuito/historial.types'
 
 export type EtapaCircuito = 'CARGA' | 'CORRECCION' | 'RECAUDACION' | 'DISTRITO' | 'JURIDICO' | 'SECRETARIA_GENERAL' | 'CIERRE' | 'ESPERA_PADRON'
 export type EstadoExpedienteBackend = 'EN_TRAMITE' | 'OBSERVADO' | 'EN_ESPERA' | 'FINALIZADO' | 'RECHAZADO' | 'ARCHIVADO' | 'ANULADO'
@@ -10,17 +15,6 @@ export interface UsuarioReasignable {
   id: string
   nombre: string
   legajo: string
-}
-
-/** GET …/recaudacion/aviso-deuda: el correo de cada titular con deuda, con el texto base (editable). */
-export interface BorradorAvisoDeuda {
-  correos: { personaId: string; titular: string; email: string | null; asunto: string; cuerpo: string }[]
-}
-
-/** POST …/recaudacion/notificar-deuda: sin `textos`, el backend usa el texto base. */
-export interface NotificarDeudaDto {
-  observaciones?: string
-  textos?: { personaId: string; asunto: string; cuerpo: string }[]
 }
 
 export type OficinaBackend = 'catastro' | 'recaudacion' | 'distrito' | 'juridico' | 'secretaria_general'
@@ -47,16 +41,6 @@ export interface TitularBackend {
   fechaConstitucion: string | null
   email: string | null
   telefono: string | null
-}
-
-/** Recaudación le dio curso con deuda: su nota y las deudas, con el estado de hoy. */
-export interface AvisoDeudaBackend {
-  fecha: string
-  usuario: string
-  observaciones: string
-  deudas: { id: string; detalle: string; titular: string; pendiente: boolean; canceladaEn: string | null }[]
-  /** false si después se pagó todo. */
-  sigueConDeuda: boolean
 }
 
 export interface AltaBackend {
@@ -149,50 +133,6 @@ export interface SituacionLegalBackend {
   documentos: { id: number; descripcion: string }[]
 }
 
-/**
- * Lo que resolvió una oficina. Si quien mira es de otra oficina (reservado), solo se sabe
- * quién actuó, dónde y cuándo: sin el tipo, el resultado, las observaciones ni los datos.
- */
-export type ActuacionHistorial = {
-  tipo: 'ACTUACION'
-  fecha: string
-  oficina: string
-  etapa: string
-  usuario: string
-} & (
-  | { reservado?: false; actuacion: string; resultado: string; observaciones: string | null; datos: Record<string, unknown> | null }
-  | { reservado: true; actuacion: null; resultado: null; observaciones: null; datos: null }
-)
-
-/** Una entrada del historial: un pase entre oficinas, una actuación de una oficina o un cambio de estado. */
-export type EntradaHistorial =
-  | {
-      tipo: 'PASE'
-      fecha: string
-      oficinaOrigen: string | null
-      oficinaDestino: string
-      etapa: string
-      enviadoPor: string
-      recibidoPor: string | null
-      recibidoEn: string | null
-      esDevolucion: boolean
-      /** true: quien mira no es de la oficina que lo envió ni de la que lo recibe (sin dictamen ni observaciones). */
-      reservado?: boolean
-      dictamen: string | null
-      observaciones: string | null
-    }
-  | ActuacionHistorial
-  | {
-      tipo: 'ESTADO'
-      fecha: string
-      oficina: string
-      /** Código del estado nuevo (el nombre sale del catálogo de la base). */
-      estado: string
-      estadoNombre: string
-      estadoAnteriorNombre: string | null
-      usuario: string
-    }
-
 /** Usuario que figura en la auditoría. */
 export interface UsuarioAuditado {
   id: string
@@ -230,24 +170,6 @@ export interface AuditoriaExpediente {
     estadoAnterior: string | null
     estadoNuevo: string | null
   }[]
-}
-
-/** GET /tramites/alta-concesion/:id/recaudacion: lo que verifica Recaudación. */
-export interface AntecedentesDeuda {
-  titulares: { personaId: string; nombre: string; documento: string | null }[]
-  /** Concesiones otorgadas de los titulares, con todos sus titulares y si tienen deuda (sí / no). */
-  concesiones: {
-    id: string
-    numero: string | null
-    departamento: string | null
-    localidad: string | null
-    titulares: { personaId: string; nombre: string }[]
-    /** Cuáles de los titulares del alta son titulares de esta concesión. */
-    deTitulares: string[]
-    tieneDeuda: boolean
-  }[]
-  /** Deudas pendientes registradas sin concesión (de antes). */
-  otrasDeudas: { id: string; personaId: string; detalle: string }[]
 }
 
 /** GET /expedientes/disponibilidad: si el número está libre o de qué trámite es. */
@@ -320,13 +242,8 @@ export interface EmailExpediente {
   asunto: string
   cuerpo: string
   /** NO_ENVIADO_PRUEBA: no hay servidor de correo configurado (quedó registrado, no salió). */
-  estado: 'ENVIADO' | 'NO_ENVIADO_PRUEBA' | 'ERROR'
+  estado: EstadoEmail
   error: string | null
   fecha: string
 }
 
-/** POST …/recaudacion/notificar-deuda: a quién se mandó y quién no tiene correo cargado. */
-export interface ResultadoAvisoDeuda {
-  enviados: { id: string; titular: string; para: string[]; estado: EmailExpediente['estado']; error: string | null }[]
-  sinCorreo: string[]
-}

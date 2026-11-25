@@ -1,8 +1,8 @@
 import { ErrorState, LoadingState } from '@/components/feedback/States'
 import { Icon } from '@/components/ui/Icon'
 import { cn } from '@/lib/cn'
-import type { ActuacionHistorial, EntradaHistorial } from '../../backend.types'
-import { useHistorial } from '../../hooks'
+import type { ActuacionHistorial, EntradaHistorial } from './historial.types'
+import { useHistorial } from './expediente'
 
 const formatear = (iso: string) => new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -105,7 +105,7 @@ function marca(e: EntradaHistorial): { icono: string; clase: string } {
  * Historial del expediente: cada pase (de qué oficina a cuál, quién lo envió, quién lo tomó
  * y cuándo), cada actuación (qué resolvió cada oficina) y cada cambio de estado, en orden.
  */
-export function HistorialAlta({ expedienteId }: { expedienteId: string }) {
+export function HistorialExpediente({ expedienteId }: { expedienteId: string }) {
   const historial = useHistorial(expedienteId)
   if (historial.isPending) return <LoadingState mensaje="Cargando historial…" className="py-6" />
   if (historial.isError) return <ErrorState error={historial.error} onRetry={() => void historial.refetch()} className="py-6" />

@@ -1,6 +1,6 @@
 import { Icon } from '@/components/ui/Icon'
 import { cn } from '@/lib/cn'
-import type { AvisoDeudaBackend } from '../../backend.types'
+import type { AvisoDeudaBackend } from './deuda.types'
 
 const fecha = (iso: string) => new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 

@@ -5,7 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/Stat
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { esNoEncontrado } from '@/services/api/errors'
-import { HistorialAlta } from '@/features/tramites/AltaDeConcesion/components/circuito/HistorialAlta'
+import { HistorialExpediente } from '@/features/tramites/shared/circuito/HistorialExpediente'
 import { useRegistroPozo } from '../api'
 import { AccionesPozo } from '../components/AccionesPozo'
 import { BarraEtapasPozo } from '../components/BarraEtapasPozo'
@@ -74,7 +74,7 @@ export default function CircuitoPozoPage() {
           </Card>
           <Card className="p-6 lg:col-span-2">
             <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">Historial</h2>
-            <HistorialAlta expedienteId={e.id} />
+            <HistorialExpediente expedienteId={e.id} />
           </Card>
         </div>
       </div>

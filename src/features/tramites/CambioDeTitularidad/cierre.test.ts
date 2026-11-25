@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { faltaEnCierre } from './cierre'
-import { nombres } from './formato'
+import { nombres } from '../shared/formato'
 
 describe('faltaEnCierre (verificación final en Catastro)', () => {
   it('sin resolución no se finaliza', () => expect(faltaEnCierre({ conResolucion: false, cotejado: true })).toMatch(/resolución/))

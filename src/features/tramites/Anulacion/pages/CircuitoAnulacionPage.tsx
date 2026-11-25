@@ -9,10 +9,10 @@ import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { AvisoSoloConsulta, useActor } from '@/features/auth/useActor'
 import { esNoEncontrado, mensajeDeError, toApiError } from '@/services/api/errors'
-import { AvisoDeuda } from '../../AltaDeConcesion/components/circuito/AvisoDeuda'
-import { DondeEsta } from '../../AltaDeConcesion/components/circuito/DondeEsta'
-import { HistorialAlta } from '../../AltaDeConcesion/components/circuito/HistorialAlta'
-import { nombres, numeroConcesion } from '../../CambioDeTitularidad/formato'
+import { AvisoDeuda } from '../../shared/circuito/AvisoDeuda'
+import { DondeEsta } from '../../shared/circuito/DondeEsta'
+import { HistorialExpediente } from '../../shared/circuito/HistorialExpediente'
+import { nombres, numeroConcesion, ubicacionConcesion } from '../../shared/formato'
 import { DocumentacionRevision } from '../../shared/circuito/DocumentacionRevision'
 import { PanelDictamen, type TextosDictamen } from '../../shared/circuito/PanelDictamen'
 import { PanelRecaudacion, type HooksRecaudacion } from '../../shared/circuito/PanelRecaudacion'
@@ -21,7 +21,7 @@ import type { Terminado } from '../../shared/circuito/terminado'
 import { anulacionApi } from '../api'
 import type { AnulacionBackend } from '../backend.types'
 import { CierreAnulacion } from '../components/CierreAnulacion'
-import { terminado as terminadoComo, ubicacionConcesion } from '../formato'
+import { terminado as terminadoComo } from '../formato'
 import {
   useAnulacion,
   useChecklistAnulacion,
@@ -125,7 +125,7 @@ export default function CircuitoAnulacionPage() {
 
         <Card className="p-6">
           <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">Historial del expediente</h2>
-          <HistorialAlta expedienteId={expediente.id} />
+          <HistorialExpediente expedienteId={expediente.id} />
         </Card>
       </div>
 

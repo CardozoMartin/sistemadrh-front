@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatearFecha } from '@/config/expedientes'
-import { dondeQuedo, estaEnCarga, faltaEnBaja, mensajeBaja, terminado, ubicacionConcesion } from './formato'
+import { dondeQuedo, estaEnCarga, faltaEnBaja, mensajeBaja, terminado } from './formato'
 
 describe('estaEnCarga (Catastro todavía puede enviarla o cancelarla)', () => {
   it('solo en trámite y en la etapa de carga', () => {
@@ -25,14 +25,6 @@ describe('dondeQuedo (verificación de datos que ya no está en Catastro)', () =
   })
   it('terminada: el estado', () => {
     expect(dondeQuedo('RECHAZADO', expediente)).toBe('Expediente 123/332-2026: quedó rechazado.')
-  })
-})
-
-describe('ubicacionConcesion', () => {
-  it('une lo que hay, sin huecos', () => {
-    expect(ubicacionConcesion({ localidad: 'TAFÍ VIEJO', departamento: 'TAFÍ VIEJO', distrito: 'II' })).toBe('TAFÍ VIEJO · TAFÍ VIEJO · II')
-    expect(ubicacionConcesion({ localidad: null, departamento: 'CAPITAL', distrito: null })).toBe('CAPITAL')
-    expect(ubicacionConcesion({ localidad: null, departamento: null, distrito: null })).toBe('')
   })
 })
 

@@ -16,7 +16,7 @@ import { errorMotivoCancelacion, MIN_MOTIVO_CANCELACION, motivoCancelacionValido
 import { PasosTramite } from '../../shared/components/PasosTramite'
 import { propuestaAFormulario } from '../adaptadores'
 import { estaEnCarga, type CambioBackend } from '../backend.types'
-import { nombres, numeroConcesion } from '../formato'
+import { nombres, numeroConcesion } from '../../shared/formato'
 import { useCambio, useCancelarCambio, useEnviarCambio, useGuardarTitularesCambio } from '../hooks'
 import { crearNuevoTitularSchema, type NuevoTitularForm } from '../schemas'
 

@@ -4,7 +4,6 @@
 // El backend valida todo (concesión vigente, sin otro trámite en curso, número de expediente
 // libre, checklist completo, etapa y expediente tomado) y devuelve el mensaje listo para mostrar.
 import { backend } from '@/services/api/backend'
-import type { FiltrosConcesiones, ResultadoConcesiones } from '@/features/catastro/consultaConcesiones'
 import type { titularesADto } from '../AltaDeConcesion/adaptadores'
 import { OPCIONES_MULTIPART, resolucionAFormData } from '../shared/circuito/resolucion'
 import type {
@@ -39,11 +38,6 @@ const datos = <T>(p: Promise<{ data: T }>) => p.then((r) => r.data)
 
 export const cambioTitularidadApi = {
   // --- Consultas -------------------------------------------------------------------
-  /** Búsqueda de concesiones VIGENTES (la misma consulta de Catastro, filtrada por estado). */
-  buscarVigentes: (filtros: FiltrosConcesiones, pagina: number, porPagina: number) => {
-    const params = Object.fromEntries(Object.entries({ ...filtros, estado: 'VIGENTE', pagina, porPagina }).filter(([, v]) => v !== undefined && v !== ''))
-    return datos(backend.get<ResultadoConcesiones>('/concesiones/buscar', { params }))
-  },
   /** Papeles del checklist del inicio (caso de uso, pasos 4-5). */
   checklist: () => datos(backend.get<DocumentoChecklist[]>('/catalogos/documentos/CAMBIO_TITULARIDAD')),
   /** Cambios en trámite (con `todos`, también los terminados). */

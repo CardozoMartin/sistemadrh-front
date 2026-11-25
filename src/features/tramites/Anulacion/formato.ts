@@ -23,9 +23,6 @@ export function dondeQuedo(estado: EstadoAnulacion, expediente: { numero: string
   return `Expediente ${expediente.numero}: ${donde}.`
 }
 
-/** «Localidad · Departamento · Distrito», sin los datos que falten. */
-export const ubicacionConcesion = (u: { localidad: string | null; departamento: string | null; distrito: string | null }) =>
-  [u.localidad, u.departamento, u.distrito].filter(Boolean).join(' · ')
 
 // --- Baja en Catastro (visto bueno final) ------------------------------------------
 

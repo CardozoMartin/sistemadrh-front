@@ -1,6 +1,6 @@
 import { cambioTitularidadApi } from '../../api'
 import type { CambioBackend } from '../../backend.types'
-import { numeroConcesion } from '../../formato'
+import { numeroConcesion } from '../../../shared/formato'
 import { useResolucionCambio } from '../../hooks'
 import { PanelResolucion, ResolucionCargada as ResolucionCargadaComun } from '../../../shared/circuito/PanelResolucion'
 import type { Terminado } from '../../../shared/circuito/terminado'

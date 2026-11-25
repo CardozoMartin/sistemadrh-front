@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { useDominio } from '@/hooks/useDominio'
 import { estaEnCarga } from '../backend.types'
-import { numeroConcesion } from '../formato'
+import { numeroConcesion } from '../../shared/formato'
 import { useCambiosEnCurso } from '../hooks'
 
 /** Cambios de titularidad en trámite (backend real): los que están en carga se pueden continuar. */

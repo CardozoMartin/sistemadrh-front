@@ -1,5 +1,5 @@
 import type { CambioBackend } from '../../backend.types'
-import { numeroConcesion } from '../../formato'
+import { numeroConcesion } from '../../../shared/formato'
 import { useChecklistCambio, useDictaminarCambio } from '../../hooks'
 import { PanelDictamen, type TextosDictamen } from '../../../shared/circuito/PanelDictamen'
 import type { Terminado } from '../../../shared/circuito/terminado'

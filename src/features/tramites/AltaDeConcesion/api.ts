@@ -5,8 +5,8 @@
 // El backend valida todo (etapa, oficina, que el expediente esté tomado, duplicados…) y
 // devuelve el mensaje de error listo para mostrar.
 import { backend } from '@/services/api/backend'
-import type { BorradorAvisoDeuda, NotificarDeudaDto, UsuarioReasignable } from './backend.types'
-import type { AltaBackend, AntecedentesDeuda, AuditoriaExpediente, DeudaBackend, DisponibilidadExpediente, EmailExpediente, EntradaHistorial, ExpedienteEnBandeja, OficinaBackend, ResultadoAvisoDeuda, SituacionLegalBackend } from './backend.types'
+import { expedienteApi } from '../shared/circuito/expediente'
+import type { BorradorAvisoDeuda, NotificarDeudaDto, UsuarioReasignable, AltaBackend, AntecedentesDeuda, AuditoriaExpediente, DeudaBackend, DisponibilidadExpediente, EmailExpediente, ExpedienteEnBandeja, OficinaBackend, ResultadoAvisoDeuda, SituacionLegalBackend } from './backend.types'
 
 const ALTA = '/tramites/alta-concesion'
 
@@ -75,8 +75,7 @@ export const altaConcesionApi = {
   padron: (id: string, dto: { padron: string; observaciones?: string }) => datos(backend.post<AltaBackend>(`${ALTA}/${id}/padron`, dto)),
 
   // --- Expediente (común a todos los trámites) ---------------------------------------
-  tomar: (id: string) => datos(backend.post(`/expedientes/${id}/tomar`)),
-  historial: (id: string) => datos(backend.get<EntradaHistorial[]>(`/expedientes/${id}/historial`)),
+  tomar: expedienteApi.tomar,
   auditoria: (id: string) => datos(backend.get<AuditoriaExpediente>(`/expedientes/${id}/auditoria`)),
   emails: (id: string) => datos(backend.get<EmailExpediente[]>(`/expedientes/${id}/emails`)),
   /** Recaudación: un correo a cada titular con deuda (solo informa en qué concesión, sin montos). */

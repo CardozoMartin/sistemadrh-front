@@ -1,121 +1,86 @@
-import { useState, type ReactNode } from 'react'
-import { FormProvider, useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { ROUTES } from '@/config/routes'
-import { Alert, EmptyState, ErrorState, LoadingState } from '@/components/feedback/States'
-import { Field, FormTextField } from '@/components/form'
+import { EmptyState } from '@/components/feedback/States'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
-import { esNoEncontrado, mensajeDeError } from '@/services/api/errors'
-import { nombres, numeroConcesion } from '../../CambioDeTitularidad/formato'
-import { errorMotivoCancelacion, MIN_MOTIVO_CANCELACION, motivoCancelacionValido } from '../../shared/circuito/motivo'
-import { CoordenadaFields } from '../../shared/components/CoordenadaFields'
-import { KmlUploadField } from '../../shared/components/KmlUploadField'
+import { ROUTES } from '@/config/routes'
 import { PasosTramite } from '../../shared/components/PasosTramite'
-import { SuministroFields } from '../../shared/components/SuministroFields'
-import type { PoligonoForm } from '../../shared/schemas/poligono'
 import type { ReubicacionBackend } from '../backend.types'
-import { ComparacionPoligono } from '../components/ComparacionReubicacion'
-import { formatearFecha } from '@/config/expedientes'
-import { caminoSuministro, dondeQuedo, seEditaEnCatastro, servicioADto, servicioInicial, textoPunto } from '../formato'
-import { useCancelarReubicacion, useEnviarReubicacion, useGuardarPoligonoReubicacion, useGuardarServicioReubicacion, useReenviarReubicacion, useReubicacion } from '../hooks'
-import { servicioReubicacionSchema, type ServicioReubicacionForm } from '../schemas'
-
-type Dialogo = 'cancelar' | 'enviar' | 'enviada' | null
+import { ObservacionJuridico } from '../components/Avisos'
+import { ConReubicacion } from '../components/ConReubicacion'
+import { AccionesPropuesta } from '../components/propuesta/AccionesPropuesta'
+import { DatosConcesion } from '../components/propuesta/DatosConcesion'
+import { SeccionPoligono } from '../components/propuesta/SeccionPoligono'
+import { SeccionServicio } from '../components/propuesta/SeccionServicio'
+import { dondeQuedo, ETAPA_CORRECCION, seEditaEnCatastro } from '../formato'
 
 const TITULO = 'Propuesta de Reubicación'
+
+/** A dónde se deriva al enviarla (carga → Recaudación; corrección de lo observado → Jurídico). */
+const destinoDe = (enCorreccion: boolean) => (enCorreccion ? 'Jurídico' : 'Recaudación')
 
 /**
  * Paso 2 (Catastro), caso de uso pasos 10-14: el nuevo lugar al que llega el agua (KML) y la forma
  * de servicio, comparados con lo vigente. «Enviar a Recaudación» lo pone en circulación. Si Jurídico
- * la observa, vuelve acá (corrección) y «Reenviar a Jurídico» la devuelve. Nada
- * cambia en la concesión hasta que la reubicación termine.
+ * la observa, vuelve acá (corrección) y «Reenviar a Jurídico» la devuelve. Nada cambia en la
+ * concesión hasta que la reubicación termine.
  */
 export default function PropuestaReubicacionPage() {
   const navigate = useNavigate()
   const { expedienteId } = useParams()
-  const reubicacion = useReubicacion(expedienteId)
+  const irAlInicio = () => navigate(ROUTES.tramites.reubicacion.inicio)
+  /**
+   * «Reubicación enviada»: vive acá porque, al derivarse, la reubicación vuelve del backend en otra
+   * etapa y la propuesta deja de ser editable (se desmonta).
+   */
+  const [enviada, setEnviada] = useState<{ numero: string; enCorreccion: boolean } | null>(null)
 
-  if (reubicacion.isPending) {
-    return (
-      <>
-        <PageHeader title={TITULO} />
-        <LoadingState mensaje="Cargando el trámite…" />
-      </>
-    )
-  }
-
-  if (reubicacion.isError) {
-    return (
-      <>
-        <PageHeader title={TITULO} />
-        {esNoEncontrado(reubicacion.error) ? (
-          <EmptyState icon="search_off" titulo="No se encontró la reubicación">
-            <Button size="sm" onClick={() => navigate(ROUTES.tramites.reubicacion.inicio)}>
-              Ir al inicio del trámite
-            </Button>
-          </EmptyState>
-        ) : (
-          <ErrorState error={reubicacion.error} onRetry={() => void reubicacion.refetch()} reintentando={reubicacion.isFetching} />
-        )}
-      </>
-    )
-  }
-
-  const { expediente } = reubicacion.data
-  const { estado } = reubicacion.data.reubicacion
-  if (!seEditaEnCatastro(estado, expediente.etapa)) {
-    return (
-      <>
-        <PageHeader title={TITULO} />
-        <EmptyState icon="lock" titulo="Esta reubicación ya no está en Catastro" descripcion={dondeQuedo(estado, expediente)}>
-          <Button size="sm" onClick={() => navigate(ROUTES.tramites.reubicacion.inicio)}>
+  return (
+    <>
+      <ConReubicacion
+        expedienteId={expedienteId}
+        titulo={TITULO}
+        mensajeCarga="Cargando el trámite…"
+        tituloNoEncontrado="No se encontró la reubicación"
+        accionNoEncontrado={
+          <Button size="sm" onClick={irAlInicio}>
             Ir al inicio del trámite
           </Button>
-        </EmptyState>
-      </>
-    )
-  }
+        }
+      >
+        {(datos) =>
+          seEditaEnCatastro(datos.reubicacion.estado, datos.expediente.etapa) ? (
+            <Propuesta datos={datos} onEnviada={(enCorreccion) => setEnviada({ numero: datos.expediente.numero, enCorreccion })} />
+          ) : (
+            <>
+              <PageHeader title={TITULO} />
+              <EmptyState icon="lock" titulo="Esta reubicación ya no está en Catastro" descripcion={dondeQuedo(datos.reubicacion.estado, datos.expediente)}>
+                <Button size="sm" onClick={irAlInicio}>
+                  Ir al inicio del trámite
+                </Button>
+              </EmptyState>
+            </>
+          )
+        }
+      </ConReubicacion>
 
-  return <Propuesta datos={reubicacion.data} />
+      <ConfirmDialog
+        open={!!enviada}
+        tone="success"
+        title={enviada?.enCorreccion ? 'Reubicación reenviada' : 'Reubicación enviada'}
+        message={enviada ? `El expediente ${enviada.numero} fue derivado a ${destinoDe(enviada.enCorreccion)}.` : ''}
+        confirmLabel="Volver al inicio"
+        onConfirm={irAlInicio}
+      />
+    </>
+  )
 }
 
-function Propuesta({ datos }: { datos: ReubicacionBackend }) {
-  const navigate = useNavigate()
-  const id = datos.expediente.id
+function Propuesta({ datos, onEnviada }: { datos: ReubicacionBackend; onEnviada: (enCorreccion: boolean) => void }) {
   const { reubicacion, expediente } = datos
-  // En la corrección (observada por Jurídico) se reenvía a Jurídico y ya no se puede cancelar.
-  const enCorreccion = expediente.etapa === 'CORRECCION'
-  const enviarNuevo = useEnviarReubicacion(id)
-  const reenviar = useReenviarReubicacion(id)
-  const enviar = enCorreccion ? reenviar : enviarNuevo
-  const destino = enCorreccion ? 'Jurídico' : 'Recaudación'
-  const cancelar = useCancelarReubicacion(id)
-  const [dialogo, setDialogo] = useState<Dialogo>(null)
-  const [motivoCancelacion, setMotivoCancelacion] = useState('')
-  const motivoValido = motivoCancelacionValido(motivoCancelacion)
-
-  const ocupado = enviar.isPending || cancelar.isPending
-  const errorMutacion = enviar.error ?? cancelar.error
-  const concesion = numeroConcesion(reubicacion.concesion)
-  const { ubicacion } = reubicacion.concesion
-
-  function confirmarEnvio() {
-    enviar.mutate(undefined, { onSuccess: () => setDialogo('enviada'), onError: () => setDialogo(null) })
-  }
-
-  function confirmarCancelacion() {
-    cancelar.mutate(motivoCancelacion.trim(), {
-      onSuccess: () => {
-        setDialogo(null)
-        navigate(ROUTES.tramites.reubicacion.inicio)
-      },
-    })
-  }
+  const enCorreccion = expediente.etapa === ETAPA_CORRECCION
+  const destino = destinoDe(enCorreccion)
 
   return (
     <>
@@ -125,278 +90,14 @@ function Propuesta({ datos }: { datos: ReubicacionBackend }) {
         <PasosTramite previos={['Búsqueda']} actual={1} titulo={enCorreccion ? 'Corrección de lo observado' : 'Propuesta'} carga="Propuesta" />
 
         {reubicacion.observacion && (
-          <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-            <Icon name="rate_review" className="shrink-0" />
-            <div>
-              <p className="font-semibold">
-                Observado por {reubicacion.observacion.oficina} el {formatearFecha(reubicacion.observacion.fecha)}
-              </p>
-              <p className="whitespace-pre-line">{reubicacion.observacion.texto ?? 'Sin detalle.'}</p>
-              <p className="mt-1 text-xs">Corrija lo que corresponda (polígono o forma de servicio) y reenvíela a {destino}.</p>
-            </div>
-          </div>
+          <ObservacionJuridico observacion={reubicacion.observacion}>Corrija lo que corresponda (polígono o forma de servicio) y reenvíela a {destino}.</ObservacionJuridico>
         )}
 
-        {/* Datos del expediente y de la concesión */}
-        <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-4 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon name="move_location" />
-              </div>
-              <div>
-                <h2 className="font-bold text-slate-900 dark:text-white">Expediente N° {expediente.numero}</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Reubicación en la concesión {concesion}</p>
-              </div>
-            </div>
-            <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700 dark:bg-green-500/15 dark:text-green-300">Concesión vigente</span>
-          </div>
-          <dl className="grid gap-x-6 gap-y-3 p-6 sm:grid-cols-2 lg:grid-cols-3">
-            <Dato label="Titular" valor={nombres(reubicacion.titulares)} />
-            <Dato label="Ubicación" valor={[ubicacion.localidad, ubicacion.departamento, ubicacion.distrito && `Distrito ${ubicacion.distrito}`].filter(Boolean).join(' · ')} />
-            <Dato label="Padrón" valor={reubicacion.concesion.padron} />
-            <Dato label="Motivo" valor={reubicacion.motivoTexto} />
-            <Dato label="Documentación presentada" valor={`${reubicacion.documentacionPresentada.length} papeles`} />
-          </dl>
-          <div className="mx-6 mb-6 flex gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm dark:border-sky-500/30 dark:bg-sky-500/10">
-            <Icon name="info" className="text-sky-600" />
-            <p className="text-sky-700 dark:text-sky-300">
-              La concesión {concesion} no se mueve: conserva su número, magnitud, titular y padrón. Lo vigente sigue rigiendo hasta que la reubicación termine con la resolución.
-            </p>
-          </div>
-        </Card>
-
+        <DatosConcesion datos={datos} />
         <SeccionPoligono datos={datos} />
         <SeccionServicio datos={datos} />
-
-        {/* Acciones */}
-        <Card>
-          <div className="flex flex-col gap-4 p-6">
-            {!reubicacion.cargaCompleta && (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Para enviarla a {destino} cargue el nuevo polígono y guarde la forma de servicio.</p>
-            )}
-            {errorMutacion && <Alert>{mensajeDeError(errorMutacion)}</Alert>}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/40">
-            {enCorreccion ? (
-              <span />
-            ) : (
-              <Button variant="ghost" size="sm" disabled={ocupado} onClick={() => setDialogo('cancelar')}>
-                Cancelar trámite
-              </Button>
-            )}
-            <div className="flex gap-3">
-              <Button variant="secondary" size="sm" iconLeft="arrow_back" disabled={ocupado} onClick={() => navigate(ROUTES.tramites.reubicacion.inicio)}>
-                Volver
-              </Button>
-              <Button size="sm" iconRight="send" loading={enviar.isPending} disabled={ocupado || !reubicacion.cargaCompleta} onClick={() => setDialogo('enviar')}>
-                {enCorreccion ? 'Reenviar a Jurídico' : 'Enviar a Recaudación'}
-              </Button>
-            </div>
-          </div>
-        </Card>
+        <AccionesPropuesta datos={datos} enCorreccion={enCorreccion} destino={destino} onEnviada={() => onEnviada(enCorreccion)} />
       </div>
-
-      <ConfirmDialog
-        open={dialogo === 'cancelar'}
-        tone="danger"
-        title="¿Cancelar el trámite?"
-        message="La reubicación queda cancelada (no se borra: queda en el historial con el motivo) y la concesión sigue como estaba."
-        confirmLabel="Sí, cancelar trámite"
-        cancelLabel="Volver"
-        loading={cancelar.isPending}
-        onConfirm={() => {
-          if (motivoValido) confirmarCancelacion()
-        }}
-        onCancel={() => setDialogo(null)}
-      >
-        <Field id="motivo-cancelacion" label="Motivo" required hint={`Al menos ${MIN_MOTIVO_CANCELACION} caracteres.`} error={errorMotivoCancelacion(motivoCancelacion)}>
-          <textarea
-            id="motivo-cancelacion"
-            rows={3}
-            value={motivoCancelacion}
-            onChange={(e) => setMotivoCancelacion(e.target.value)}
-            className="rounded-lg border border-slate-300 p-3 text-sm dark:border-slate-600 dark:bg-slate-900"
-          />
-        </Field>
-      </ConfirmDialog>
-      <ConfirmDialog
-        open={dialogo === 'enviar'}
-        title={`¿${enCorreccion ? 'Reenviar' : 'Enviar'} la reubicación a ${destino}?`}
-        message={`El expediente ${expediente.numero} se derivará a ${destino}. La concesión ${concesion} sigue como está hasta que la reubicación termine.`}
-        confirmLabel="Sí, enviar"
-        cancelLabel="Cancelar"
-        loading={enviar.isPending}
-        onConfirm={confirmarEnvio}
-        onCancel={() => setDialogo(null)}
-      />
-      <ConfirmDialog
-        open={dialogo === 'enviada'}
-        tone="success"
-        title={enCorreccion ? 'Reubicación reenviada' : 'Reubicación enviada'}
-        message={`El expediente ${expediente.numero} fue derivado a ${destino}.`}
-        confirmLabel="Volver al inicio"
-        onConfirm={() => navigate(ROUTES.tramites.reubicacion.inicio)}
-      />
     </>
-  )
-}
-
-// --- Nuevo lugar (polígono) -----------------------------------------------------------
-
-function SeccionPoligono({ datos }: { datos: ReubicacionBackend }) {
-  const { reubicacion } = datos
-  const guardar = useGuardarPoligonoReubicacion(datos.expediente.id)
-  const [avisosArchivo, setAvisosArchivo] = useState<string[]>([])
-  const form = useForm<{ poligono: PoligonoForm | null }>({ defaultValues: { poligono: null } })
-  const elegido = useWatch({ control: form.control, name: 'poligono' })
-  const { vigente, propuesta } = reubicacion
-
-  function onGuardar() {
-    if (!elegido?.contenido) return
-    guardar.mutate(
-      { nombre: elegido.nombreArchivo, contenido: elegido.contenido },
-      {
-        onSuccess: (r) => {
-          setAvisosArchivo(r.avisosArchivo)
-          form.reset({ poligono: null })
-        },
-      },
-    )
-  }
-
-  return (
-    <Card>
-      <EncabezadoSeccion icono="polyline" titulo="Nuevo lugar al que llega el agua" descripcion="El KML / GeoJSON del plano de reubicación." />
-      <div className="flex flex-col gap-5 p-6">
-        <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-          <Icon name="warning" className="shrink-0" />
-          <p>
-            El nuevo polígono tiene que quedar <strong>dentro de la propiedad del solicitante</strong>
-            {reubicacion.concesion.padron ? ` (padrón ${reubicacion.concesion.padron})` : ''}: verifíquelo con el plano de reubicación. La magnitud no cambia, así que la superficie debería ser la misma.
-          </p>
-        </div>
-
-        <FormProvider {...form}>
-          <KmlUploadField name="poligono" titulo={propuesta.poligono ? 'Reemplazar el KML propuesto' : 'KML del nuevo lugar'} />
-        </FormProvider>
-        {elegido?.contenido && (
-          <div className="flex justify-end">
-            <Button size="sm" iconLeft="save" loading={guardar.isPending} onClick={onGuardar}>
-              Guardar polígono
-            </Button>
-          </div>
-        )}
-        {guardar.error && <Alert>{mensajeDeError(guardar.error)}</Alert>}
-        {avisosArchivo.length > 0 && <Avisos titulo="Lectura del archivo" avisos={avisosArchivo} tono="info" />}
-
-        {propuesta.poligono && <ComparacionPoligono vigente={vigente.poligono} propuesto={propuesta.poligono} />}
-        {reubicacion.avisos.length > 0 && <Avisos titulo="Revise antes de enviar" avisos={reubicacion.avisos} tono="warning" />}
-      </div>
-    </Card>
-  )
-}
-
-// --- Forma de servicio ----------------------------------------------------------------
-
-function SeccionServicio({ datos }: { datos: ReubicacionBackend }) {
-  const { reubicacion } = datos
-  const guardar = useGuardarServicioReubicacion(datos.expediente.id)
-  const [guardado, setGuardado] = useState(false)
-  const form = useForm<ServicioReubicacionForm>({ resolver: zodResolver(servicioReubicacionSchema), defaultValues: servicioInicial(reubicacion), mode: 'onTouched' })
-  const cambiaPunto = useWatch({ control: form.control, name: 'cambiaPuntoEntrega' })
-  const { ubicacion } = reubicacion.concesion
-  const { vigente } = reubicacion
-
-  function onSubmit(values: ServicioReubicacionForm) {
-    setGuardado(false)
-    guardar.mutate(servicioADto(values), {
-      onSuccess: () => {
-        // Lo guardado pasa a ser el punto de partida del formulario (deja de estar «modificado»).
-        form.reset(values)
-        setGuardado(true)
-      },
-    })
-  }
-
-  return (
-    <Card>
-      <EncabezadoSeccion icono="water" titulo="Forma de servicio" descripcion="Por dónde llega el agua al nuevo lugar. Se precarga con lo vigente: cambie solo lo que cambia." />
-      <FormProvider {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6 p-6">
-          <div className="rounded-lg border border-slate-200 p-4 text-sm dark:border-slate-700">
-            <p className="mb-1 text-xs font-semibold text-slate-500 uppercase dark:text-slate-400">Vigente</p>
-            <p className="text-slate-700 dark:text-slate-200">{caminoSuministro(vigente.suministro)}</p>
-            <p className="text-slate-500 dark:text-slate-400">Punto de entrega: {textoPunto(vigente.puntoEntrega)}</p>
-          </div>
-
-          <SuministroFields prefix="suministro" ubicacion={{ departamento: ubicacion.departamento ?? '', localidad: ubicacion.localidad ?? '', distrito: ubicacion.distrito ?? '' }} sinCaudal />
-          <p className="-mt-3 text-xs text-slate-500 dark:text-slate-400">Indique en la observación el sistema de riego (goteo, aspersión, gravedad…).</p>
-
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-            <input type="checkbox" className="size-4" {...form.register('cambiaPuntoEntrega')} />
-            Cambia el punto de entrega del agua (ej: la estación de bombeo)
-          </label>
-          {cambiaPunto && (
-            <div className="grid gap-6 md:grid-cols-2">
-              <CoordenadaFields name="puntoEntrega" titulo="Punto de entrega" required className="md:col-span-2" />
-              <FormTextField name="puntoEntrega.referencia" label="Referencia del lugar" placeholder="Ej: estación de bombeo sobre el río Salí" className="md:col-span-2" />
-            </div>
-          )}
-
-          {guardar.error && <Alert>{mensajeDeError(guardar.error)}</Alert>}
-          <div className="flex items-center justify-end gap-3">
-            {guardado && !form.formState.isDirty && (
-              <span className="flex items-center gap-1 text-sm text-green-700 dark:text-green-300">
-                <Icon name="check_circle" className="text-[18px]!" /> Guardada
-              </span>
-            )}
-            <Button type="submit" size="sm" iconLeft="save" loading={guardar.isPending}>
-              Guardar forma de servicio
-            </Button>
-          </div>
-        </form>
-      </FormProvider>
-    </Card>
-  )
-}
-
-// --- Piezas ---------------------------------------------------------------------------
-
-function EncabezadoSeccion({ icono, titulo, descripcion }: { icono: string; titulo: string; descripcion: string }) {
-  return (
-    <div className="flex items-center gap-3 border-b border-slate-200 px-6 py-4 dark:border-slate-700">
-      <Icon name={icono} className="text-primary" />
-      <div>
-        <h3 className="font-bold text-slate-900 dark:text-white">{titulo}</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{descripcion}</p>
-      </div>
-    </div>
-  )
-}
-
-function Avisos({ titulo, avisos, tono }: { titulo: string; avisos: string[]; tono: 'info' | 'warning' }) {
-  const colores =
-    tono === 'warning'
-      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
-      : 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200'
-  return (
-    <div className={`rounded-lg border p-4 text-sm ${colores}`}>
-      <p className="mb-1 font-semibold">{titulo}</p>
-      <ul className="list-disc pl-5">
-        {avisos.map((a) => (
-          <li key={a}>{a}</li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function Dato({ label, valor }: { label: string; valor: ReactNode }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</dt>
-      <dd className="text-sm text-slate-900 dark:text-white">{valor || <span className="text-slate-400">—</span>}</dd>
-    </div>
   )
 }

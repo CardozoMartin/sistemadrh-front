@@ -3,7 +3,7 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/feedback/Stat
 import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { RegistroExpediente } from '@/features/tramites/AltaDeConcesion/components/circuito/RegistroExpediente'
-import { DondeEsta } from '@/features/tramites/AltaDeConcesion/components/circuito/DondeEsta'
+import { DondeEsta } from '@/features/tramites/shared/circuito/DondeEsta'
 import { cn } from '@/lib/cn'
 import { esNoEncontrado } from '@/services/api/errors'
 import { AccionesBaja } from '../components/AccionesBaja'

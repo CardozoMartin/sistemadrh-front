@@ -1,12 +1,10 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { Spinner } from '@/components/ui/Spinner'
 import type { PoligonoReubicacion, PuntoReubicacion, SuministroReubicacion } from '../backend.types'
-import { anilloExterior, caminoSuministro, diferenciaSuperficie, textoPunto } from '../formato'
+import { anilloExterior, caminoSuministro, diferenciaSuperficie, hectareas, textoPunto } from '../formato'
 
 // El mapa (Leaflet) se carga recién cuando hay algo para comparar.
 const EditorPoligonoMap = lazy(() => import('@/components/map/EditorPoligonoMap').then((m) => ({ default: m.EditorPoligonoMap })))
-
-const ha = (n: number) => `${n.toLocaleString('es-AR', { maximumFractionDigits: 2 })} ha`
 
 function Fila({ label, vigente, propuesto, diferencia }: { label: string; vigente: ReactNode; propuesto: ReactNode; diferencia?: ReactNode }) {
   return (
@@ -35,8 +33,8 @@ export function ComparacionPoligono({ vigente, propuesto }: { vigente: PoligonoR
         <tbody>
           <Fila
             label="Superficie"
-            vigente={vigente ? ha(vigente.superficieHa) : '—'}
-            propuesto={ha(propuesto.superficieHa)}
+            vigente={vigente ? hectareas(vigente.superficieHa) : '—'}
+            propuesto={hectareas(propuesto.superficieHa)}
             diferencia={vigente ? diferenciaSuperficie(vigente.superficieHa, propuesto.superficieHa) : undefined}
           />
           <Fila label="Perímetro" vigente={vigente ? `${Math.round(vigente.perimetroM)} m` : '—'} propuesto={`${Math.round(propuesto.perimetroM)} m`} />

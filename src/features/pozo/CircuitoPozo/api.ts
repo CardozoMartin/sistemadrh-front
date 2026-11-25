@@ -1,6 +1,6 @@
 // Circuito del registro de pozo. PROTOTIPO: lo responde el backend emulado (npm run demo).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { altaKeys } from '@/features/tramites/AltaDeConcesion/hooks'
+import { expedienteKeys } from '@/features/tramites/shared/circuito/expediente'
 import { backend } from '@/services/api/backend'
 import type { DatosCatastroPozo, RegistroPozoBackend } from './types'
 
@@ -42,8 +42,8 @@ export function useAccionRegistro<T>(id: string, accion: (id: string, dto: T) =>
     onSuccess: (r) => {
       if (r && typeof r === 'object' && 'ficha' in r) qc.setQueryData(registroPozoKeys.registro(id), r)
       else void qc.invalidateQueries({ queryKey: registroPozoKeys.registro(id) })
-      void qc.invalidateQueries({ queryKey: altaKeys.historial(id) })
-      void qc.invalidateQueries({ queryKey: altaKeys.bandejas() })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.historial(id) })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.bandejas() })
       void qc.invalidateQueries({ queryKey: ['backend', 'pozos'] })
       void qc.invalidateQueries({ queryKey: ['sig'] })
     },

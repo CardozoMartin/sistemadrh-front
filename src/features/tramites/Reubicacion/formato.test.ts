@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { coordenadaVacia } from '@/lib/coordenadas'
 import { suministroVacio } from '../shared/schemas/suministro'
 import type { ReubicacionBackend } from './backend.types'
-import { anilloExterior, caminoSuministro, diferenciaSuperficie, estaEnCarga, seEditaEnCatastro, servicioADto, servicioInicial, terminado, textoPunto } from './formato'
+import { anilloExterior, caminoSuministro, diferenciaSuperficie, faltaEnCierre, hectareas, mensajeCierre, seEditaEnCatastro, servicioADto, servicioInicial, terminado, textoPunto, textoUbicacion } from './formato'
 
 const suministro = {
   fuentes: ['RIO SALI'],
@@ -24,16 +24,24 @@ const reubicacion = (cambios: Partial<ReubicacionBackend['reubicacion']> = {}) =
   }) as ReubicacionBackend['reubicacion']
 
 describe('formato de la reubicación', () => {
-  it('solo se edita en la carga y en trámite', () => {
-    expect(estaEnCarga('EN_TRAMITE', 'CARGA')).toBe(true)
-    expect(estaEnCarga('EN_TRAMITE', 'RECAUDACION')).toBe(false)
-    expect(estaEnCarga('ANULADO', 'CARGA')).toBe(false)
+  it('Catastro edita en la carga y en la corrección de lo observado, solo en trámite', () => {
+    expect(seEditaEnCatastro('EN_TRAMITE', 'CARGA')).toBe(true)
+    expect(seEditaEnCatastro('EN_TRAMITE', 'CORRECCION')).toBe(true)
+    expect(seEditaEnCatastro('EN_TRAMITE', 'RECAUDACION')).toBe(false)
+    expect(seEditaEnCatastro('EN_TRAMITE', 'JURIDICO')).toBe(false)
+    expect(seEditaEnCatastro('ANULADO', 'CARGA')).toBe(false)
   })
 
-  it('Catastro edita en la carga y en la corrección de lo observado (pero no cancela en la corrección)', () => {
-    expect(seEditaEnCatastro('EN_TRAMITE', 'CORRECCION')).toBe(true)
-    expect(estaEnCarga('EN_TRAMITE', 'CORRECCION')).toBe(false)
-    expect(seEditaEnCatastro('EN_TRAMITE', 'JURIDICO')).toBe(false)
+  it('hectáreas y ubicación en texto', () => {
+    expect(hectareas(1250.5)).toBe('1.250,5 ha')
+    expect(textoUbicacion({ localidad: 'Famaillá', departamento: null, distrito: '7' })).toBe('Famaillá · Distrito 7')
+    expect(textoUbicacion({ localidad: null, departamento: null, distrito: null })).toBe('')
+  })
+
+  it('cierre: hace falta la resolución y el cotejo', () => {
+    expect(faltaEnCierre({ conResolucion: true, cotejado: true })).toBeNull()
+    expect(faltaEnCierre({ conResolucion: true, cotejado: false })).not.toBeNull()
+    expect(mensajeCierre({ concesion: 'N° 7089', expediente: '856/332-2025', fechaResolucion: null })).toBe('El nuevo lugar y la forma de servicio rigen en la concesión N° 7089. Lo anterior y el expediente 856/332-2025 quedan en el historial.')
   })
 
   it('cómo terminó (null mientras está en trámite)', () => {
