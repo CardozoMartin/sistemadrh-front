@@ -36,11 +36,16 @@ export interface PuntoReubicacion {
 }
 
 /** Polígono (vigente o propuesto) en WGS84. */
+/** De dónde salió el polígono propuesto: el KML del plano, el KML ajustado en el mapa o el vigente ajustado. */
+export type CargaPoligono = 'KML' | 'KML_AJUSTADO' | 'DIBUJADO'
+
 export interface PoligonoReubicacion {
   geojson: { type: 'MultiPolygon'; coordinates: number[][][][] }
   superficieHa: number
   perimetroM: number
   archivo: { nombre: string; bytes: number; sistemaOrigen: string | null } | null
+  /** Solo en el propuesto (null en el vigente). */
+  carga?: CargaPoligono | null
 }
 
 /** GET /tramites/reubicacion/:id (y lo que devuelve cada acción). */

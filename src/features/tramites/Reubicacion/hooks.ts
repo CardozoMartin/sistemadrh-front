@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { expedienteKeys } from '../shared/circuito/expediente'
 import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
-import { reubicacionApi, type ArchivoPoligono, type FormaServicioDto, type IniciarReubicacionDto } from './api'
+import { reubicacionApi, type FormaServicioDto, type IniciarReubicacionDto, type PoligonoAGuardar } from './api'
 import type { ReubicacionBackend } from './backend.types'
 
 export const reubicacionKeys = {
@@ -85,7 +85,7 @@ export function useIniciarReubicacion() {
   })
 }
 
-export const useGuardarPoligonoReubicacion = (id: string) => useAccionCatastro(id, (i, archivo: ArchivoPoligono) => reubicacionApi.guardarPoligono(i, archivo))
+export const useGuardarPoligonoReubicacion = (id: string) => useAccionCatastro(id, (i, poligono: PoligonoAGuardar) => reubicacionApi.guardarPoligono(i, poligono))
 export const useGuardarServicioReubicacion = (id: string) => useAccionCatastro(id, (i, dto: FormaServicioDto) => reubicacionApi.guardarServicio(i, dto))
 export const useEnviarReubicacion = (id: string) => useAccionCatastro<void>(id, (i) => reubicacionApi.enviar(i))
 /** Corrección de lo observado por Jurídico: vuelve a Jurídico. */

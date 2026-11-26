@@ -11,9 +11,10 @@ import { ObservacionJuridico } from '../components/Avisos'
 import { ConReubicacion } from '../components/ConReubicacion'
 import { AccionesPropuesta } from '../components/propuesta/AccionesPropuesta'
 import { DatosConcesion } from '../components/propuesta/DatosConcesion'
+import { PasosPropuesta } from '../components/propuesta/PasosPropuesta'
 import { SeccionPoligono } from '../components/propuesta/SeccionPoligono'
 import { SeccionServicio } from '../components/propuesta/SeccionServicio'
-import { dondeQuedo, ETAPA_CORRECCION, seEditaEnCatastro } from '../formato'
+import { dondeQuedo, ETAPA_CORRECCION, pasosPropuesta, seEditaEnCatastro } from '../formato'
 
 const TITULO = 'Propuesta de Reubicación'
 
@@ -94,6 +95,7 @@ function Propuesta({ datos, onEnviada }: { datos: ReubicacionBackend; onEnviada:
         )}
 
         <DatosConcesion datos={datos} />
+        <PasosPropuesta pasos={pasosPropuesta(reubicacion, destino)} />
         <SeccionPoligono datos={datos} />
         <SeccionServicio datos={datos} />
         <AccionesPropuesta datos={datos} enCorreccion={enCorreccion} destino={destino} onEnviada={() => onEnviada(enCorreccion)} />

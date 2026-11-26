@@ -22,6 +22,7 @@ const ACTUACION: Record<string, string> = {
   CANCELACION: 'Canceló el trámite (iniciado por error)',
   REASIGNACION: 'Reasignó el expediente a otro usuario',
   CORRECCION_DATOS: 'Corrección de datos',
+  PROPUESTA: 'Cargó la propuesta',
   // Baja de pozo (el historial es el mismo para cualquier expediente)
   DOCUMENTACION: 'Control de documentación',
   ANTECEDENTES: 'Verificó los antecedentes',

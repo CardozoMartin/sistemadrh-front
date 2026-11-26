@@ -43,12 +43,24 @@ export interface ArchivoPoligono {
   contenido: string
 }
 
+/**
+ * Lo que se manda al guardar el polígono: el archivo del plano y/o la geometría ajustada en el mapa
+ * (GeoJSON en latitud/longitud). Al menos uno de los dos.
+ */
+export interface PoligonoAGuardar {
+  archivo?: ArchivoPoligono
+  geometria?: { type: 'Polygon'; coordinates: number[][][] }
+}
+
 const datos = <T>(p: Promise<{ data: T }>) => p.then((r) => r.data)
 
-function poligonoAFormData({ nombre, contenido }: ArchivoPoligono): FormData {
+function poligonoAFormData({ archivo, geometria }: PoligonoAGuardar): FormData {
   const form = new FormData()
-  const tipo = /\.(geo)?json$/i.test(nombre) ? 'application/geo+json' : 'application/vnd.google-earth.kml+xml'
-  form.append('archivo', new Blob([contenido], { type: tipo }), nombre)
+  if (geometria) form.append('geometria', JSON.stringify(geometria))
+  if (archivo) {
+    const tipo = /\.(geo)?json$/i.test(archivo.nombre) ? 'application/geo+json' : 'application/vnd.google-earth.kml+xml'
+    form.append('archivo', new Blob([archivo.contenido], { type: tipo }), archivo.nombre)
+  }
   return form
 }
 
@@ -62,8 +74,8 @@ export const reubicacionApi = {
   // --- Catastro --------------------------------------------------------------------
   iniciar: (dto: IniciarReubicacionDto) => datos(backend.post<ReubicacionBackend>(REUBICACION, dto)),
   /** El polígono del nuevo lugar (multipart con el archivo original). */
-  guardarPoligono: (expedienteId: string, archivo: ArchivoPoligono) =>
-    datos(backend.put<ReubicacionConAvisosArchivo>(`${REUBICACION}/${expedienteId}/poligono`, poligonoAFormData(archivo), OPCIONES_MULTIPART)),
+  guardarPoligono: (expedienteId: string, poligono: PoligonoAGuardar) =>
+    datos(backend.put<ReubicacionConAvisosArchivo>(`${REUBICACION}/${expedienteId}/poligono`, poligonoAFormData(poligono), OPCIONES_MULTIPART)),
   /** La forma de servicio nueva: suministro y punto de entrega. */
   guardarServicio: (expedienteId: string, dto: FormaServicioDto) => datos(backend.put<ReubicacionBackend>(`${REUBICACION}/${expedienteId}/forma-servicio`, dto)),
   /** Iniciada por error: queda anulada (motivo obligatorio, 10 caracteres o más). */

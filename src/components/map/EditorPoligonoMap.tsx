@@ -9,6 +9,15 @@ import type { LatLng } from '@/lib/geo'
 const AZUL = '#137fec'
 const ROJO = '#ef4444'
 
+/** Vértice que ya se movió respecto del original del que se partió (naranja). */
+const NARANJA = '#f97316'
+const iconoVerticeMovido = L.divIcon({
+  className: '',
+  html: `<span style="display:block;width:14px;height:14px;border-radius:9999px;background:${NARANJA};border:3px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5);cursor:grab"></span>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+})
+
 const iconoVertice = L.divIcon({
   className: '',
   html: `<span style="display:block;width:12px;height:12px;border-radius:9999px;background:#fff;border:3px solid ${AZUL};box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:grab"></span>`,
@@ -27,6 +36,8 @@ interface Props {
   valido?: boolean
   /** Con `onChange`, los vértices se pueden arrastrar. */
   onChange?: (coordenadas: LatLng[]) => void
+  /** Qué vértices ya se movieron (se marcan en naranja). Por índice, igual que `propuesta`. */
+  movidos?: boolean[]
   className?: string
 }
 
@@ -35,7 +46,7 @@ interface Props {
  * ReduccionAmpliacion/reducionampliacion.html): polígono original punteado, nueva
  * propuesta con vértices arrastrables y concesiones vecinas.
  */
-export function EditorPoligonoMap({ original, propuesta, vecinos = [], valido = true, onChange, className = 'h-[28rem]' }: Props) {
+export function EditorPoligonoMap({ original, propuesta, vecinos = [], valido = true, onChange, movidos, className = 'h-[28rem]' }: Props) {
   const contenedor = useRef<HTMLDivElement>(null)
   const mapa = useRef<L.Map | null>(null)
   const capaBase = useRef<L.Layer | null>(null)
@@ -127,7 +138,8 @@ export function EditorPoligonoMap({ original, propuesta, vecinos = [], valido = 
     } else {
       vertices.current.forEach((v, i) => v.setLatLng(propuesta[i]))
     }
-  }, [propuesta])
+    vertices.current.forEach((v, i) => v.setIcon(movidos?.[i] ? iconoVerticeMovido : iconoVertice))
+  }, [propuesta, movidos])
 
   return (
     <div className={`relative isolate overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 ${className}`}>
@@ -153,6 +165,11 @@ export function EditorPoligonoMap({ original, propuesta, vecinos = [], valido = 
         <span className="flex items-center gap-2">
           <span className="size-3 rounded-sm border-2" style={{ borderColor: valido ? AZUL : ROJO, background: `${valido ? AZUL : ROJO}33` }} /> Nueva propuesta
         </span>
+        {onChange && movidos?.some(Boolean) && (
+          <span className="flex items-center gap-2">
+            <span className="size-3 rounded-full border-2 border-white" style={{ background: NARANJA }} /> Vértice movido
+          </span>
+        )}
         {vecinos.length > 0 && (
           <span className="flex items-center gap-2">
             <span className="size-3 rounded-sm border border-slate-500 bg-slate-300/50" /> Concesiones vecinas
