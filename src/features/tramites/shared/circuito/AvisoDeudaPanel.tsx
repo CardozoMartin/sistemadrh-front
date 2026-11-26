@@ -8,8 +8,11 @@ import type { HooksRecaudacion } from './PanelRecaudacion'
 
 type Texto = { asunto: string; cuerpo: string }
 
-/** Aviso de deuda por correo: el sistema arma el texto de cada titular con deuda y Recaudación lo puede editar. */
-export function AvisoDeudaPanel({ expedienteId, hooks }: { expedienteId: string; hooks: HooksRecaudacion }) {
+/**
+ * Aviso de deuda por correo: el sistema arma el texto de cada titular con deuda y Recaudación lo puede editar.
+ * `bloqueado`: por qué todavía no se puede preparar (el botón queda deshabilitado con ese motivo).
+ */
+export function AvisoDeudaPanel({ expedienteId, hooks, bloqueado }: { expedienteId: string; hooks: HooksRecaudacion; bloqueado?: string }) {
   const [abierto, setAbierto] = useState(false)
   const borrador = hooks.useBorradorAviso(expedienteId, abierto)
   const notificar = hooks.useNotificar(expedienteId)
@@ -39,10 +42,11 @@ export function AvisoDeudaPanel({ expedienteId, hooks }: { expedienteId: string;
           <div>
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Aviso de deuda al titular</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">Un correo a cada titular con deuda, al email que tiene cargado. Puede editar el texto antes de enviarlo.</p>
+            {bloqueado && <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">{bloqueado}</p>}
           </div>
         </div>
         {!abierto && (
-          <Button size="sm" variant="secondary" iconLeft="edit_note" onClick={() => setAbierto(true)}>
+          <Button size="sm" variant="secondary" iconLeft="edit_note" disabled={!!bloqueado} onClick={() => setAbierto(true)}>
             Preparar aviso
           </Button>
         )}
@@ -69,7 +73,13 @@ export function AvisoDeudaPanel({ expedienteId, hooks }: { expedienteId: string;
                     Para <strong>{c.titular}</strong> · {c.email}
                   </p>
                   <input value={textos[c.personaId]?.asunto ?? ''} onChange={(e) => editar(c.personaId, 'asunto', e.target.value)} className={controlClass({})} aria-label="Asunto" />
-                  <textarea value={textos[c.personaId]?.cuerpo ?? ''} onChange={(e) => editar(c.personaId, 'cuerpo', e.target.value)} rows={8} className={controlClass({ className: 'resize-y' })} aria-label="Texto del correo" />
+                  <textarea
+                    value={textos[c.personaId]?.cuerpo ?? ''}
+                    onChange={(e) => editar(c.personaId, 'cuerpo', e.target.value)}
+                    rows={8}
+                    className={controlClass({ className: 'resize-y' })}
+                    aria-label="Texto del correo"
+                  />
                 </div>
               ) : (
                 <p key={c.personaId} className="text-sm text-amber-700 dark:text-amber-300">

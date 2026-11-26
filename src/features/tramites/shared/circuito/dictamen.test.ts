@@ -12,6 +12,11 @@ describe('dictamen de Jurídico (observaciones solo si no apto)', () => {
     expect(faltaEnDictamen('NO_APTO', 'Falta el poder del apoderado')).toBeNull()
   })
 
+  it('observado exige qué corregir', () => {
+    expect(faltaEnDictamen('OBSERVADO', '')).toContain('corregir')
+    expect(faltaEnDictamen('OBSERVADO', 'Falta el informe de registro inmobiliario')).toBeNull()
+  })
+
   it('sin elegir todavía no hay nada que avisar', () => {
     expect(faltaEnDictamen('', '')).toBeNull()
   })

@@ -31,11 +31,8 @@ export interface VerificacionDeudaDto {
   observaciones?: string
 }
 
-/** POST …/distrito y …/juridico. */
-export interface DictamenDto {
-  resultado: AptoNoApto
-  observaciones?: string
-}
+/** POST …/distrito y …/juridico (el panel común; el cambio no ofrece «observado»). */
+export type { Dictamen as DictamenDto } from '../shared/circuito/PanelDictamen'
 
 /** POST …/resolucion (multipart): los datos de la resolución y el PDF escaneado. */
 export interface ResolucionDto {

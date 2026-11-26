@@ -8,7 +8,7 @@ import { mensajeDeError } from '@/services/api/errors'
 import { Campo, Opciones } from './campos'
 import { faltaEnDictamen, MINIMO_OBSERVACIONES_TECNICAS, type ResultadoDictamen } from './dictamen'
 import type { Terminado } from './terminado'
-import { opcionesAptoNoApto } from './opciones'
+import { AMBAR, opcionesAptoNoApto, type OpcionTarjeta } from './opciones'
 import { ResumenEnvio } from './ResumenEnvio'
 
 const SIGUIENTE = { distrito: 'Jurídico', juridico: 'Secretaría General' } as const
@@ -44,16 +44,25 @@ interface Props {
   textos: TextosDictamen
   /** Lo que se muestra arriba del dictamen (ej: Jurídico revisa la documentación). */
   revision?: ReactNode
+  /** Suma «Observado»: vuelve a Catastro para corregir o completar y Catastro lo reenvía a esta oficina. */
+  conObservado?: boolean
   onTerminado: (t: Terminado) => void
 }
 
+/** Las tarjetas del dictamen: apto / no apto y, si el trámite lo admite, observado en el medio. */
+function opcionesDictamen(conObservado: boolean): OpcionTarjeta<ResultadoDictamen>[] {
+  if (!conObservado) return opcionesAptoNoApto('Apto', 'No apto')
+  const [apto, noApto] = opcionesAptoNoApto('Apto', 'No apto (se rechaza)')
+  return [apto, { valor: 'OBSERVADO', texto: 'Observado (vuelve a Catastro)', icono: 'undo', ...AMBAR }, noApto]
+}
+
 /**
- * Distrito y Jurídico (común a los trámites sobre una concesión): «¿Está apto?» sí / no,
- * observaciones y una confirmación con el resumen de lo que se envía; al confirmar, «Trámite
- * enviado». Apto: pasa a la oficina siguiente. No apto: el trámite se rechaza.
- * En Distrito las observaciones técnicas son obligatorias siempre.
+ * Distrito y Jurídico (común a los trámites sobre una concesión): «¿Está apto?» sí / no (y, con
+ * `conObservado`, observado), observaciones y una confirmación con el resumen de lo que se envía;
+ * al confirmar, «Trámite enviado». Apto: pasa a la oficina siguiente. Observado: vuelve a Catastro.
+ * No apto: el trámite se rechaza. En Distrito las observaciones técnicas son obligatorias siempre.
  */
-export function PanelDictamen({ expediente, concesion, oficina, useDictaminar, textos, revision, onTerminado }: Props) {
+export function PanelDictamen({ expediente, concesion, oficina, useDictaminar, textos, revision, conObservado = false, onTerminado }: Props) {
   const dictaminar = useDictaminar(expediente.id, oficina)
   const [resultado, setResultado] = useState<ResultadoDictamen | ''>('')
   const [observaciones, setObservaciones] = useState('')
@@ -62,6 +71,9 @@ export function PanelDictamen({ expediente, concesion, oficina, useDictaminar, t
   const tecnicas = oficina === 'distrito'
   const falta = faltaEnDictamen(resultado, observaciones, tecnicas)
   const numero = expediente.numero
+  const opciones = opcionesDictamen(conObservado)
+  const observado = resultado === 'OBSERVADO'
+  const destino = resultado === 'APTO' ? siguiente : observado ? 'Catastro (para corregir)' : 'Rechazado'
 
   function enviar() {
     setConfirmar(false)
@@ -73,59 +85,63 @@ export function PanelDictamen({ expediente, concesion, oficina, useDictaminar, t
           onTerminado(
             resultado === 'APTO'
               ? { titulo: 'Trámite enviado', mensaje: `El expediente ${numero} fue enviado a ${siguiente}.` }
-              : { titulo: textos.tituloRechazado, mensaje: textos.mensajeRechazado(numero) },
+              : observado
+                ? { titulo: 'Devuelto a Catastro', mensaje: `El expediente ${numero} volvió a Catastro con las observaciones. Cuando lo corrijan, vuelve a esta oficina.` }
+                : { titulo: textos.tituloRechazado, mensaje: textos.mensajeRechazado(numero) },
           ),
       },
     )
   }
 
-  const etiqueta = tecnicas ? 'Observaciones técnicas (obligatorio)' : resultado === 'NO_APTO' ? 'Observaciones (obligatorio)' : 'Observaciones'
+  const etiqueta = tecnicas ? 'Observaciones técnicas (obligatorio)' : resultado && resultado !== 'APTO' ? 'Observaciones (obligatorio)' : 'Observaciones'
 
   return (
     <div className="flex flex-col gap-4">
       {revision}
       <p className="text-sm font-semibold text-slate-900 dark:text-white">¿Está apto?</p>
-      <Opciones
-        valor={resultado}
-        onChange={setResultado}
-        opciones={opcionesAptoNoApto('Apto', 'No apto')}
-      />
+      <Opciones valor={resultado} onChange={setResultado} opciones={opciones} />
 
       <Campo etiqueta={etiqueta} ayuda={tecnicas ? `${textos.informeTecnico} (al menos ${MINIMO_OBSERVACIONES_TECNICAS} caracteres). Queda en el historial.` : undefined}>
         <textarea
           value={observaciones}
           onChange={(e) => setObservaciones(e.target.value)}
           rows={4}
-          placeholder={tecnicas ? 'Ej: caudal disponible en el canal, estado del suministro, inspección realizada…' : 'Si hace falta aclarar algo'}
+          placeholder={
+            tecnicas
+              ? 'Ej: caudal disponible en el canal, estado del suministro, inspección realizada…'
+              : observado
+                ? 'Qué falta o hay que corregir (ej: falta el informe de registro inmobiliario actualizado)'
+                : 'Si hace falta aclarar algo'
+          }
           className={controlClass({ className: 'resize-y' })}
         />
       </Campo>
 
       {resultado && (
-        <p className={resultado === 'APTO' ? 'text-xs text-slate-500 dark:text-slate-400' : 'text-xs text-red-700 dark:text-red-300'}>
-          {resultado === 'APTO' ? `Pasa a ${siguiente}.` : textos.avisoRechazo}
+        <p className={resultado === 'NO_APTO' ? 'text-xs text-red-700 dark:text-red-300' : 'text-xs text-slate-500 dark:text-slate-400'}>
+          {resultado === 'APTO' ? `Pasa a ${siguiente}.` : observado ? 'Vuelve a Catastro para corregir o completar; después regresa a esta oficina.' : textos.avisoRechazo}
         </p>
       )}
       {falta && <p className="text-xs font-medium text-red-600 dark:text-red-400">{falta}</p>}
       {dictaminar.error && <Alert>{mensajeDeError(dictaminar.error)}</Alert>}
       <div>
         <Button
-          iconRight={resultado === 'NO_APTO' ? 'block' : 'send'}
-          variant={resultado === 'NO_APTO' ? 'secondary' : 'primary'}
+          iconRight={resultado === 'NO_APTO' ? 'block' : observado ? 'undo' : 'send'}
+          variant={resultado && resultado !== 'APTO' ? 'secondary' : 'primary'}
           loading={dictaminar.isPending}
           disabled={!resultado || !!falta || dictaminar.isPending}
           onClick={() => setConfirmar(true)}
         >
-          {resultado === 'NO_APTO' ? textos.botonRechazo : `Enviar a ${siguiente}`}
+          {resultado === 'NO_APTO' ? textos.botonRechazo : observado ? 'Devolver a Catastro' : `Enviar a ${siguiente}`}
         </Button>
       </div>
 
       <ConfirmDialog
         open={confirmar}
         tone={resultado === 'NO_APTO' ? 'danger' : 'info'}
-        title={resultado === 'NO_APTO' ? textos.tituloConfirmarRechazo : `¿Enviar el trámite a ${siguiente}?`}
+        title={resultado === 'NO_APTO' ? textos.tituloConfirmarRechazo : observado ? '¿Devolver el expediente a Catastro?' : `¿Enviar el trámite a ${siguiente}?`}
         message={resultado === 'NO_APTO' ? textos.mensajeConfirmarRechazo : 'Revise lo que se envía:'}
-        confirmLabel={resultado === 'NO_APTO' ? 'Sí, rechazar' : 'Sí, enviar'}
+        confirmLabel={resultado === 'NO_APTO' ? 'Sí, rechazar' : observado ? 'Sí, devolver' : 'Sí, enviar'}
         cancelLabel="Cancelar"
         onConfirm={enviar}
         onCancel={() => setConfirmar(false)}
@@ -134,9 +150,9 @@ export function PanelDictamen({ expediente, concesion, oficina, useDictaminar, t
           filas={[
             ['Expediente', numero],
             ['Concesión', concesion],
-            ['Resultado', resultado === 'APTO' ? 'Apto' : 'No apto'],
+            ['Resultado', opciones.find((o) => o.valor === resultado)?.texto],
             [tecnicas ? 'Observaciones técnicas' : 'Observaciones', observaciones.trim() || null],
-            ['Destino', resultado === 'APTO' ? siguiente : 'Rechazado'],
+            ['Destino', destino],
           ]}
         />
       </ConfirmDialog>

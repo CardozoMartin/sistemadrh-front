@@ -3,7 +3,7 @@
 /** GET /catalogos/documentos/:tipoTramite: un papel del checklist (solo los activos). */
 export interface DocumentoChecklist {
   id: number
-  tipoTramite: 'CAMBIO_TITULARIDAD' | 'ANULACION' | 'REUBICACION'
+  tipoTramite: 'CAMBIO_TITULARIDAD' | 'AMPLIACION_REDUCCION' | 'ANULACION' | 'REUBICACION'
   descripcion: string
   obligatorio: boolean
   orden: number

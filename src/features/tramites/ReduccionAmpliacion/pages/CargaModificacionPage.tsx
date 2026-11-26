@@ -15,12 +15,12 @@ import { esNoEncontrado, mensajeDeError } from '@/services/api/errors'
 import { HistorialExpediente } from '../../shared/circuito/HistorialExpediente'
 import { TitularesDomiciliosFields } from '../../shared'
 import { PasosTramite } from '../../shared/components/PasosTramite'
-import { ResumenEnvio } from '../../shared/circuitoBackend/componentes'
-import { CircuitoProvider, useTomar } from '../../shared/circuitoBackend/contexto'
-import { hectareas, nombres, numeroConcesion, tamanio } from '../../shared/circuitoBackend/reglas'
+import { ResumenEnvio } from '../../shared/circuito/ResumenEnvio'
+import { tamanio } from '../../shared/circuito/resolucion'
+import { hectareas, nombres, numeroConcesion } from '../../shared/formato'
 import { estaEnCarga, NOMBRE_TIPO, type ModificacionBackend } from '../backend.types'
 import { SuperficieResumen } from '../components/SuperficieResumen'
-import { CIRCUITO_MODIFICACION, useCancelarModificacion, useEnviarModificacion, useGuardarTitulares, useModificacion, useQuitarTitulares, useSubirPlano } from '../hooks'
+import { useCancelarModificacion, useEnviarModificacion, useGuardarTitulares, useModificacion, useQuitarTitulares, useSubirPlano, useTomarModificacion } from '../hooks'
 import { faltaEnPlano, titularesAFormulario, titularesSchema, type TitularesForm } from '../schemas'
 
 const TITULO = 'Plano de la nueva superficie'
@@ -83,11 +83,7 @@ export default function CargaModificacionPage() {
     )
   }
 
-  return (
-    <CircuitoProvider circuito={CIRCUITO_MODIFICACION}>
-      <Carga key={expediente.id} datos={consulta.data} />
-    </CircuitoProvider>
-  )
+  return <Carga key={expediente.id} datos={consulta.data} />
 }
 
 type Dialogo = 'cancelar' | 'enviar' | 'enviado' | null
@@ -98,7 +94,7 @@ function Carga({ datos }: { datos: ModificacionBackend }) {
   const { expediente, modificacion: m } = datos
   const id = expediente.id
   const correccion = expediente.etapa === 'CORRECCION'
-  const tomar = useTomar(id)
+  const tomar = useTomarModificacion(id)
   const enviar = useEnviarModificacion(id)
   const cancelar = useCancelarModificacion(id)
   const [dialogo, setDialogo] = useState<Dialogo>(null)
@@ -137,11 +133,7 @@ function Carga({ datos }: { datos: ModificacionBackend }) {
           ))}
         </Card>
 
-        {correccion && (
-          <Alert tone="info">
-            Distrito o Jurídico observó el trámite: corrija o complete lo que indica el historial (abajo) y reenvíelo. Vuelve a la oficina que lo observó.
-          </Alert>
-        )}
+        {correccion && <Alert tone="info">Distrito o Jurídico observó el trámite: corrija o complete lo que indica el historial (abajo) y reenvíelo. Vuelve a la oficina que lo observó.</Alert>}
 
         {!loTengoYo ? (
           <Card className="flex flex-col items-start gap-3 p-6">
@@ -176,7 +168,9 @@ function Carga({ datos }: { datos: ModificacionBackend }) {
                 </Button>
               </div>
             </Card>
-            {!m.cargaCompleta && <p className="-mt-3 text-right text-xs text-slate-500 dark:text-slate-400">Para enviarlo falta el plano{m.cambiaTitular ? ' o el domicilio de los nuevos titulares' : ''}.</p>}
+            {!m.cargaCompleta && (
+              <p className="-mt-3 text-right text-xs text-slate-500 dark:text-slate-400">Para enviarlo falta el plano{m.cambiaTitular ? ' o el domicilio de los nuevos titulares' : ''}.</p>
+            )}
           </>
         )}
 
@@ -208,7 +202,13 @@ function Carga({ datos }: { datos: ModificacionBackend }) {
           hint={`Al menos ${MIN_MOTIVO} caracteres.`}
           error={motivo && !motivoValido ? `Explique el motivo (al menos ${MIN_MOTIVO} caracteres).` : undefined}
         >
-          <textarea id="motivo-cancelacion" rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} className="rounded-lg border border-slate-300 p-3 text-sm dark:border-slate-600 dark:bg-slate-900" />
+          <textarea
+            id="motivo-cancelacion"
+            rows={3}
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            className="rounded-lg border border-slate-300 p-3 text-sm dark:border-slate-600 dark:bg-slate-900"
+          />
         </Field>
       </ConfirmDialog>
       <ConfirmDialog
@@ -258,8 +258,8 @@ function PlanoCard({ datos }: { datos: ModificacionBackend }) {
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Plano de {NOMBRE_TIPO[datos.modificacion.tipo].toLowerCase()}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            La copia digital del plano que presentó el solicitante. El sistema controla que {datos.modificacion.tipo === 'AMPLIACION' ? 'aumente' : 'disminuya'} la superficie, que no se superponga con otra
-            concesión{datos.modificacion.tipo === 'REDUCCION' && datos.modificacion.poligonoActual ? ', que quede dentro del polígono actual' : ''} y que esté dentro de Tucumán.
+            La copia digital del plano que presentó el solicitante. El sistema controla que {datos.modificacion.tipo === 'AMPLIACION' ? 'aumente' : 'disminuya'} la superficie, que no se superponga con
+            otra concesión{datos.modificacion.tipo === 'REDUCCION' && datos.modificacion.poligonoActual ? ', que quede dentro del polígono actual' : ''} y que esté dentro de Tucumán.
           </p>
         </div>
       </div>

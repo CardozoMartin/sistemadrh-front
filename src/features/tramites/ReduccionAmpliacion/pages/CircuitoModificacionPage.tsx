@@ -12,20 +12,41 @@ import { esNoEncontrado, mensajeDeError, toApiError } from '@/services/api/error
 import { AvisoDeuda } from '../../shared/circuito/AvisoDeuda'
 import { DondeEsta } from '../../shared/circuito/DondeEsta'
 import { HistorialExpediente } from '../../shared/circuito/HistorialExpediente'
-import { DocumentacionRevision } from '../../shared/circuitoBackend/componentes'
-import { CircuitoProvider, useTomar } from '../../shared/circuitoBackend/contexto'
-import { DictamenPanel } from '../../shared/circuitoBackend/DictamenPanel'
-import { RecaudacionPanel } from '../../shared/circuitoBackend/RecaudacionPanel'
-import { ResolucionCargada, ResolucionPanel } from '../../shared/circuitoBackend/ResolucionPanel'
-import { hectareas, numeroConcesion } from '../../shared/circuitoBackend/reglas'
-import type { Terminado } from '../../shared/circuitoBackend/tipos'
+import { DocumentacionRevision } from '../../shared/circuito/DocumentacionRevision'
+import { PanelDictamen, type OficinaDictamen, type TextosDictamen } from '../../shared/circuito/PanelDictamen'
+import { PanelRecaudacion } from '../../shared/circuito/PanelRecaudacion'
+import { PanelResolucion, ResolucionCargada } from '../../shared/circuito/PanelResolucion'
+import type { Terminado } from '../../shared/circuito/terminado'
+import { hectareas, numeroConcesion } from '../../shared/formato'
+import { modificacionApi } from '../api'
 import { NOMBRE_TIPO, type ModificacionBackend } from '../backend.types'
 import { CierreModificacion } from '../components/CierreModificacion'
 import { SuperficieResumen } from '../components/SuperficieResumen'
 import { TitularesModificacion } from '../components/TitularesModificacion'
-import { CIRCUITO_MODIFICACION, useModificacion } from '../hooks'
+import { HOOKS_RECAUDACION_MODIFICACION, useChecklistModificacion, useDictaminarModificacion, useModificacion, useResolucionModificacion, useTomarModificacion } from '../hooks'
 
 const TITULO = 'Expediente de ampliación / reducción'
+
+const TEXTOS_RECAUDACION = {
+  deudaTitulares: 'La ampliación / reducción no avanza si algún titular tiene deuda.',
+  concesiones: (titulares: string) => `De ${titulares}. Tener otras concesiones solo se informa; lo que frena el trámite es la deuda.`,
+}
+
+const TEXTOS_DICTAMEN: TextosDictamen = {
+  informeTecnico: 'Informe técnico (inspección: el plano, la forma de servicio y el suministro)',
+  avisoRechazo: 'Se rechaza la ampliación / reducción: la concesión sigue igual, con su superficie. No se puede deshacer.',
+  botonRechazo: 'Rechazar el trámite',
+  tituloConfirmarRechazo: '¿Rechazar el trámite?',
+  mensajeConfirmarRechazo: 'El expediente queda rechazado: la concesión sigue igual, con su superficie. No se puede deshacer.',
+  tituloRechazado: 'Trámite rechazado',
+  mensajeRechazado: (numero) => `El expediente ${numero} quedó rechazado: la concesión sigue igual, con su superficie.`,
+}
+
+const TEXTOS_RESOLUCION = {
+  destino: 'Catastro · verificación final',
+  mensajeRegistrada: (resolucion: string, expediente: string) =>
+    `Resolución ${resolucion} registrada. El expediente ${expediente} pasó a Catastro para la verificación final: ahí se carga el caudal asignado y la concesión queda con la nueva superficie.`,
+}
 
 const TERMINADO: Record<string, string> = {
   FINALIZADO: 'Finalizado: la concesión quedó con la nueva superficie',
@@ -73,7 +94,7 @@ export default function CircuitoModificacionPage() {
   const { expediente, modificacion: m } = datos
   const nueva = m.superficie.nuevaHa === null ? 'sin plano' : hectareas(m.superficie.nuevaHa)
   return (
-    <CircuitoProvider circuito={CIRCUITO_MODIFICACION}>
+    <>
       <PageHeader title={`${TITULO} ${expediente.numero}`} description={`${NOMBRE_TIPO[m.tipo]} de la concesión ${numeroConcesion(m.concesion)} · ${hectareas(m.superficie.actualHa)} → ${nueva}`} />
 
       <div className="flex flex-col gap-6">
@@ -94,7 +115,7 @@ export default function CircuitoModificacionPage() {
         <Card className="flex flex-col gap-5 p-6">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Verificación de datos</h2>
           <UbicacionConcesion datos={datos} />
-          {m.resolucion && <ResolucionCargada expedienteId={expediente.id} resolucion={m.resolucion} />}
+          {m.resolucion && <ResolucionCargada expedienteId={expediente.id} resolucion={m.resolucion} descargar={modificacionApi.archivoResolucion} />}
           <SuperficieResumen datos={datos} />
           <TitularesModificacion datos={datos} />
           <p className="text-xs text-slate-500 dark:text-slate-400">Documentación presentada en Catastro: {m.documentacionPresentada.map((d) => d.descripcion).join(' · ') || 'no registrada'}.</p>
@@ -116,7 +137,7 @@ export default function CircuitoModificacionPage() {
         onConfirm={() => navigate(RUTA_BANDEJA[terminado!.oficina as keyof typeof RUTA_BANDEJA] ?? '/')}
         onCancel={() => setTerminado(null)}
       />
-    </CircuitoProvider>
+    </>
   )
 }
 
@@ -125,7 +146,7 @@ function PanelOficina({ datos, onTerminado }: { datos: ModificacionBackend; onTe
   const actor = useActor()
   const navigate = useNavigate()
   const { expediente } = datos
-  const tomar = useTomar(expediente.id)
+  const tomar = useTomarModificacion(expediente.id)
 
   if (!actor.puedeActuarEn(expediente.oficinaActual)) {
     return (
@@ -190,8 +211,6 @@ function PanelOficina({ datos, onTerminado }: { datos: ModificacionBackend; onTe
 /** Lo que hace cada oficina en su etapa. */
 function panelDe(datos: ModificacionBackend, onTerminado: (t: Terminado) => void): { titulo: string; icono: string; accion: string; contenido: ReactNode } | null {
   const { expediente, modificacion: m } = datos
-  const comun = { expedienteId: expediente.id, numeroExpediente: expediente.numero, onTerminado }
-  const concesion = numeroConcesion(m.concesion)
   switch (expediente.etapa) {
     case 'RECAUDACION':
       return {
@@ -199,12 +218,15 @@ function panelDe(datos: ModificacionBackend, onTerminado: (t: Terminado) => void
         icono: 'payments',
         accion: 'verificar la deuda',
         contenido: (
-          <RecaudacionPanel
-            {...comun}
-            concesionId={m.concesion.id}
+          <PanelRecaudacion
+            expediente={expediente}
+            concesionDelTramite={{ id: m.concesion.id, etiqueta: 'La del trámite' }}
             actuales={m.titularesActuales.map((t) => t.personaId)}
             nuevos={m.nuevosTitulares.map((t) => t.personaId)}
+            textos={TEXTOS_RECAUDACION}
             enEspera={expediente.estado === 'EN_ESPERA'}
+            hooks={HOOKS_RECAUDACION_MODIFICACION}
+            onTerminado={onTerminado}
           />
         ),
       }
@@ -214,36 +236,56 @@ function panelDe(datos: ModificacionBackend, onTerminado: (t: Terminado) => void
         icono: 'water_drop',
         accion: 'dictaminar',
         contenido: (
-          <DictamenPanel {...comun} numeroConcesion={concesion} oficina="distrito">
-            <Alert tone="info">
-              Revise la superficie, el plano y el caudal en «Verificación de datos» (abajo) e informe la inspección: si la forma de servicio o el suministro no alcanzan, corresponde «No apto».
-            </Alert>
-          </DictamenPanel>
+          <Dictamen
+            datos={datos}
+            oficina="distrito"
+            revision={
+              <Alert tone="info">
+                Revise la superficie, el plano y el caudal en «Verificación de datos» (abajo) e informe la inspección: si la forma de servicio o el suministro no alcanzan, corresponde «No apto».
+              </Alert>
+            }
+            onTerminado={onTerminado}
+          />
         ),
       }
     case 'JURIDICO':
-      return {
-        titulo: 'Jurídico · Dictamen',
-        icono: 'gavel',
-        accion: 'dictaminar',
-        contenido: (
-          <DictamenPanel {...comun} numeroConcesion={concesion} oficina="juridico">
-            <DocumentacionRevision presentada={m.documentacionPresentada} />
-          </DictamenPanel>
-        ),
-      }
+      return { titulo: 'Jurídico · Dictamen', icono: 'gavel', accion: 'dictaminar', contenido: <DictamenJuridico datos={datos} onTerminado={onTerminado} /> }
     case 'SECRETARIA_GENERAL':
       return {
         titulo: 'Secretaría General · Resolución',
         icono: 'history_edu',
         accion: 'cargar la resolución',
-        contenido: <ResolucionPanel {...comun} numeroConcesion={concesion} />,
+        contenido: <PanelResolucion expediente={expediente} concesion={numeroConcesion(m.concesion)} useResolucion={useResolucionModificacion} textos={TEXTOS_RESOLUCION} onTerminado={onTerminado} />,
       }
     case 'CIERRE':
       return { titulo: 'Catastro · Verificación final', icono: 'task_alt', accion: 'hacer la verificación final', contenido: <CierreModificacion datos={datos} onTerminado={onTerminado} /> }
     default:
       return null
   }
+}
+
+/** Distrito y Jurídico: apto, observado (vuelve a Catastro) o no apto, con el panel común. */
+function Dictamen({ datos, oficina, revision, onTerminado }: { datos: ModificacionBackend; oficina: OficinaDictamen; revision?: ReactNode; onTerminado: (t: Terminado) => void }) {
+  return (
+    <PanelDictamen
+      expediente={datos.expediente}
+      concesion={numeroConcesion(datos.modificacion.concesion)}
+      oficina={oficina}
+      useDictaminar={useDictaminarModificacion}
+      textos={TEXTOS_DICTAMEN}
+      revision={revision}
+      conObservado
+      onTerminado={onTerminado}
+    />
+  )
+}
+
+/** Jurídico revisa la documentación presentada en Catastro contra el checklist del trámite. */
+function DictamenJuridico({ datos, onTerminado }: { datos: ModificacionBackend; onTerminado: (t: Terminado) => void }) {
+  const checklist = useChecklistModificacion()
+  return (
+    <Dictamen datos={datos} oficina="juridico" revision={<DocumentacionRevision checklist={checklist.data} presentados={datos.modificacion.documentacionPresentada} />} onTerminado={onTerminado} />
+  )
 }
 
 /** Dónde está la concesión, con acceso a la ficha en el visor. */

@@ -12,11 +12,21 @@ import type { Terminado } from './terminado'
 const MINIMO_NOTA = 10
 
 /** En espera y no se pudo cobrar: pasa igual a Distrito con una nota de por qué (la deuda sigue registrada). */
-export function CursoConDeudaPanel({ expedienteId, numero, hooks, onTerminado }: { expedienteId: string; numero: string; hooks: HooksRecaudacion; onTerminado: (t: Terminado) => void }) {
+export function CursoConDeudaPanel({
+  expedienteId,
+  numero,
+  useCursoConDeuda,
+  onTerminado,
+}: {
+  expedienteId: string
+  numero: string
+  useCursoConDeuda: NonNullable<HooksRecaudacion['useCursoConDeuda']>
+  onTerminado: (t: Terminado) => void
+}) {
   const [abierto, setAbierto] = useState(false)
   const [nota, setNota] = useState('')
   const [confirmar, setConfirmar] = useState(false)
-  const accion = hooks.useCursoConDeuda(expedienteId)
+  const accion = useCursoConDeuda(expedienteId)
   const corta = nota.trim().length < MINIMO_NOTA
 
   if (!abierto) {

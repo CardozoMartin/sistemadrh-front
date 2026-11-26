@@ -1,5 +1,5 @@
 import { cn } from '@/lib/cn'
-import { hectareas, litrosPorSegundo } from '../../shared/circuitoBackend/reglas'
+import { hectareas, litrosPorSegundo } from '../../shared/formato'
 import type { ModificacionBackend } from '../backend.types'
 import { ComparacionLadoALado } from './ComparacionPlanoMap'
 

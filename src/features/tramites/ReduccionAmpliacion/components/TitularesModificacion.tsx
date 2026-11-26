@@ -1,5 +1,5 @@
 import { Icon } from '@/components/ui/Icon'
-import type { DomicilioBackend, PersonaBackend } from '../../shared/circuitoBackend/tipos'
+import type { DomicilioBackend, PersonaBackend } from '../backend.types'
 import type { ModificacionBackend } from '../backend.types'
 
 const domicilioTexto = (d: DomicilioBackend | undefined) =>
@@ -42,7 +42,11 @@ export function TitularesModificacion({ datos }: { datos: ModificacionBackend })
               <Icon name={c.icono} className="text-[18px]!" />
               {c.titulo}
             </p>
-            {c.personas.length === 0 ? <p className="text-sm text-slate-400">Sin datos cargados.</p> : c.personas.map((p, i) => <Persona key={p.personaId} persona={p} domicilio={c.domicilios[i] ?? c.domicilios[0]} />)}
+            {c.personas.length === 0 ? (
+              <p className="text-sm text-slate-400">Sin datos cargados.</p>
+            ) : (
+              c.personas.map((p, i) => <Persona key={p.personaId} persona={p} domicilio={c.domicilios[i] ?? c.domicilios[0]} />)
+            )}
           </div>
         ))}
       </div>

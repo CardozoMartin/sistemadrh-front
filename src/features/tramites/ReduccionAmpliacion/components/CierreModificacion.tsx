@@ -6,10 +6,10 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { formatearFecha } from '@/config/expedientes'
 import { mensajeDeError } from '@/services/api/errors'
 import { Campo } from '../../shared/circuito/campos'
-import { ResumenEnvio } from '../../shared/circuitoBackend/componentes'
-import { useVerificacionFinal } from '../../shared/circuitoBackend/contexto'
-import { hectareas, litrosPorSegundo, nombres, numeroConcesion } from '../../shared/circuitoBackend/reglas'
-import type { Terminado } from '../../shared/circuitoBackend/tipos'
+import { ResumenEnvio } from '../../shared/circuito/ResumenEnvio'
+import { useVerificacionFinalModificacion } from '../hooks'
+import { hectareas, litrosPorSegundo, nombres, numeroConcesion } from '../../shared/formato'
+import type { Terminado } from '../../shared/circuito/terminado'
 import { NOMBRE_TIPO, type ModificacionBackend } from '../backend.types'
 
 /** Qué falta para poder finalizar (null: se puede). */
@@ -46,7 +46,7 @@ function Tarjeta({ etiqueta, antes, children }: { etiqueta: string; antes: strin
  * El backend vuelve a controlar que el plano no pise otra concesión.
  */
 export function CierreModificacion({ datos, onTerminado }: { datos: ModificacionBackend; onTerminado: (t: Terminado) => void }) {
-  const finalizar = useVerificacionFinal(datos.expediente.id)
+  const finalizar = useVerificacionFinalModificacion(datos.expediente.id)
   const { modificacion: m, expediente } = datos
   const [cotejado, setCotejado] = useState(false)
   const [observaciones, setObservaciones] = useState('')

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { nombres, numeroConcesion, ubicacionConcesion } from './formato'
+import { hectareas, litrosPorSegundo, nombres, numeroConcesion, ubicacionConcesion } from './formato'
+
+describe('hectareas y litrosPorSegundo', () => {
+  it('con coma decimal y hasta 4 / 3 decimales', () => {
+    expect(hectareas(21.27345)).toBe('21,2735 ha')
+    expect(hectareas(10)).toBe('10 ha')
+    expect(litrosPorSegundo(12.5)).toBe('12,5 l/s')
+    expect(litrosPorSegundo(0.0456)).toBe('0,046 l/s')
+  })
+})
 
 describe('numeroConcesion y nombres', () => {
   it('usa el número y, si todavía no tiene, el id', () => {

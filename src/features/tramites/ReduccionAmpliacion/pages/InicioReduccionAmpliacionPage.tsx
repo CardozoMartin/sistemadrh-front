@@ -15,8 +15,8 @@ import { BuscadorVigentes } from '../../shared/components/BuscadorVigentes'
 import { ChecklistDocumentacion, type DocumentoChecklist } from '../../shared/components/ChecklistDocumentacion'
 import { NumeroExpedienteFields } from '../../shared/components/NumeroExpedienteFields'
 import { PasosTramite } from '../../shared/components/PasosTramite'
-import { useChecklist } from '../../shared/circuitoBackend/componentes'
-import { numeroConcesion } from '../../shared/circuitoBackend/reglas'
+import { useChecklistModificacion } from '../hooks'
+import { numeroConcesion } from '../../shared/formato'
 import { expedienteVacio } from '../../shared/schemas/expediente'
 import { esNumeroOcupado } from '../../shared/errores'
 import type { TipoModificacionBackend } from '../backend.types'
@@ -36,7 +36,7 @@ const TIPOS: { valor: TipoModificacionBackend; texto: string; icono: string; col
  */
 export default function InicioReduccionAmpliacionPage() {
   const navigate = useNavigate()
-  const checklist = useChecklist('AMPLIACION_REDUCCION')
+  const checklist = useChecklistModificacion()
   const iniciar = useIniciarModificacion()
   const [seleccionada, setSeleccionada] = useState<ConcesionEncontrada | null>(null)
   const [faltantes, setFaltantes] = useState<DocumentoChecklist[]>([])

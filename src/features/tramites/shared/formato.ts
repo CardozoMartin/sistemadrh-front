@@ -9,6 +9,11 @@ export const nombres = (lista: { nombreCompleto: string }[]) => {
   return n.length <= 1 ? (n[0] ?? '') : `${n.slice(0, -1).join(', ')} y ${n[n.length - 1]}`
 }
 
+/** «21,2734 ha»: superficie en hectáreas, con hasta 4 decimales. */
+export const hectareas = (n: number) => `${n.toLocaleString('es-AR', { maximumFractionDigits: 4 })} ha`
+
+/** «12,5 l/s»: caudal en litros por segundo, con hasta 3 decimales. */
+export const litrosPorSegundo = (n: number) => `${n.toLocaleString('es-AR', { maximumFractionDigits: 3 })} l/s`
+
 /** «Localidad · Departamento · Distrito» (vacío si no hay nada registrado). */
-export const ubicacionConcesion = (u: { localidad: string | null; departamento: string | null; distrito: string | null }) =>
-  [u.localidad, u.departamento, u.distrito].filter(Boolean).join(' · ')
+export const ubicacionConcesion = (u: { localidad: string | null; departamento: string | null; distrito: string | null }) => [u.localidad, u.departamento, u.distrito].filter(Boolean).join(' · ')

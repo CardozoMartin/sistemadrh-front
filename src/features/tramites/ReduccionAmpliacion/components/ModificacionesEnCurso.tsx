@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { formatearFecha } from '@/config/expedientes'
 import { ROUTES } from '@/config/routes'
 import { useDominio } from '@/hooks/useDominio'
-import { hectareas, numeroConcesion } from '../../shared/circuitoBackend/reglas'
+import { hectareas, numeroConcesion } from '../../shared/formato'
 import { estaEnCarga, NOMBRE_TIPO } from '../backend.types'
 import { useModificacionesEnCurso } from '../hooks'
 

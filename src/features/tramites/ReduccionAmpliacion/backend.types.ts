@@ -2,7 +2,11 @@
 // Mismos nombres que devuelve el backend (src/tramites/ampliacion-reduccion/ampliacion-reduccion.service.ts).
 import type { MultiPolygon } from 'geojson'
 import type { Oficina } from '@/types/domain'
-import type { AvisoDeudaBackend, DomicilioBackend, PersonaBackend, ResolucionBackend, ResumenExpediente } from '../shared/circuitoBackend/tipos'
+import type { AvisoDeudaBackend } from '../shared/circuito/deuda.types'
+import type { ResolucionRegistrada as ResolucionBackend } from '../shared/circuito/resolucion'
+import type { DomicilioTramite as DomicilioBackend, PersonaTramite as PersonaBackend, ResumenExpediente } from '../shared/tipos'
+
+export type { DomicilioBackend, PersonaBackend }
 
 export type TipoModificacionBackend = 'AMPLIACION' | 'REDUCCION'
 export type EstadoModificacion = 'EN_TRAMITE' | 'FINALIZADO' | 'RECHAZADO' | 'ANULADO'

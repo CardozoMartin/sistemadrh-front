@@ -16,6 +16,15 @@ export interface PersonaTramite {
   telefono: string | null
 }
 
+/** Domicilio legal (vigente o propuesto): nombres del catálogo y código del distrito (los mismos valores que el formulario). */
+export interface DomicilioTramite {
+  calle: string | null
+  numero: string | null
+  departamento: string | null
+  localidad: string | null
+  distrito: string | null
+}
+
 /** Dónde está el expediente (resumen común a todos los trámites). */
 export interface ResumenExpediente {
   id: string

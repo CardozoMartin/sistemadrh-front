@@ -19,13 +19,14 @@ import { estadoDeudaPorTitular, faltaEnDecision, SIGUIENTE_A_RECAUDACION as SIGU
 /**
  * Los hooks de Recaudación de cada trámite (cambio de titularidad, anulación…): mismos endpoints
  * del circuito común, cada uno bajo su ruta y con su caché.
+ * `useCursoConDeuda`: solo los trámites que permiten darle curso con deuda (sin él, con deuda no pasa).
  */
 export interface HooksRecaudacion {
   useAntecedentes: (id: string) => UseQueryResult<AntecedentesDeuda>
   useVerificar: (id: string) => UseMutationResult<unknown, Error, VerificacionDeuda>
   useBorradorAviso: (id: string, habilitado: boolean) => UseQueryResult<BorradorAvisoDeuda>
   useNotificar: (id: string) => UseMutationResult<ResultadoAvisoDeuda, Error, NotificarDeudaDto>
-  useCursoConDeuda: (id: string) => UseMutationResult<unknown, Error, string>
+  useCursoConDeuda?: (id: string) => UseMutationResult<unknown, Error, string>
 }
 
 interface Props {
@@ -47,7 +48,8 @@ interface Props {
  * otorgadas de los titulares y si tienen deuda. Recaudación decide:
  *   - Apto (sin deuda): con confirmación, pasa a Distrito («trámite enviado»).
  *   - No apto (tiene deuda): se marca en qué concesión y el motivo; queda en espera en Recaudación.
- *     En espera se puede avisar al titular por correo o, si no se pudo cobrar, darle curso con una nota.
+ *     Al marcar «Posee deuda» ya se puede avisar al titular por correo (si la deuda está registrada)
+ *     y, en espera, si el trámite lo permite, darle curso con una nota.
  */
 export function PanelRecaudacion({ expediente, concesionDelTramite, actuales, nuevos, textos, enEspera, hooks, onTerminado }: Props) {
   const id = expediente.id
@@ -62,6 +64,9 @@ export function PanelRecaudacion({ expediente, concesionDelTramite, actuales, nu
   if (antecedentes.isError) return <Alert>No se pudieron consultar las concesiones de los titulares: {mensajeDeError(antecedentes.error)}</Alert>
 
   const { titulares, concesiones, otrasDeudas } = antecedentes.data
+  /** Deuda pendiente ya cargada en el sistema (con eso el backend arma el aviso por correo). */
+  const deudaRegistrada = concesiones.some((c) => c.tieneDeuda) || otrasDeudas.length > 0
+  const conCursoConDeuda = !!hooks.useCursoConDeuda
   const tieneDeuda = (c: (typeof concesiones)[number]) => decision === 'NO_APTO' && (marcadas[c.id] ?? c.tieneDeuda)
   const conDeuda = concesiones.filter(tieneDeuda)
   const nombreDe = (personaId: string) => titulares.find((t) => t.personaId === personaId)?.nombre ?? personaId
@@ -96,7 +101,12 @@ export function PanelRecaudacion({ expediente, concesionDelTramite, actuales, nu
           <Icon name="pause_circle" className="mt-0.5 text-red-600 dark:text-red-300" />
           <div className="text-sm text-red-800 dark:text-red-200">
             <p className="font-semibold">En espera · pendiente de pago</p>
-            <p>Cuando paguen, marque «Apto»: se levanta la deuda y pasa a {SIGUIENTE}. Mientras tanto puede avisar por correo o, si no se puede cobrar, darle curso con deuda.</p>
+            <p>
+              Cuando paguen, marque «Apto»: se levanta la deuda y pasa a {SIGUIENTE}.{' '}
+              {conCursoConDeuda
+                ? 'Mientras tanto puede avisar por correo o, si no se puede cobrar, darle curso con deuda.'
+                : 'Con deuda este trámite no avanza; mientras tanto puede avisar por correo.'}
+            </p>
           </div>
         </div>
       )}
@@ -113,9 +123,7 @@ export function PanelRecaudacion({ expediente, concesionDelTramite, actuales, nu
 
       <div>
         <p className="text-sm font-semibold text-slate-900 dark:text-white">Concesiones de los titulares</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          {textos.concesiones(titulares.map((t) => t.nombre).join(' · '))}
-        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{textos.concesiones(titulares.map((t) => t.nombre).join(' · '))}</p>
       </div>
 
       {concesiones.length === 0 ? (
@@ -160,14 +168,10 @@ export function PanelRecaudacion({ expediente, concesionDelTramite, actuales, nu
         </ul>
       )}
 
-      {otrasDeudas.length > 0 && (
-        <Alert tone="info">
-          Deudas registradas antes, sin concesión: {otrasDeudas.map((d) => `${nombreDe(d.personaId)} · ${d.detalle}`).join(' — ')}.
-        </Alert>
-      )}
+      {otrasDeudas.length > 0 && <Alert tone="info">Deudas registradas antes, sin concesión: {otrasDeudas.map((d) => `${nombreDe(d.personaId)} · ${d.detalle}`).join(' — ')}.</Alert>}
 
-      {/* Paso 12: ¿posee deuda? */}
-      <p className="text-sm font-semibold text-slate-900 dark:text-white">¿Posee deuda?</p>
+      {/* Paso 12: ¿posee deuda? Botones grandes y centrados, en verde / rojo. */}
+      <p className="mt-2 text-center text-base font-bold text-slate-900 dark:text-white">¿Posee deuda?</p>
       <Opciones
         valor={decision}
         onChange={(d) => {
@@ -175,6 +179,7 @@ export function PanelRecaudacion({ expediente, concesionDelTramite, actuales, nu
           setDecision(d)
         }}
         opciones={opcionesAptoNoApto('No posee deuda (apto)', 'Posee deuda (no apto)')}
+        grande
       />
 
       {/* Paso 13: observaciones (obligatorias si posee deuda). */}
@@ -206,11 +211,7 @@ export function PanelRecaudacion({ expediente, concesionDelTramite, actuales, nu
         open={confirmar}
         tone={decision === 'NO_APTO' ? 'danger' : 'info'}
         title={decision === 'NO_APTO' ? '¿Dejar el trámite en espera por deuda?' : `¿Enviar el trámite a ${SIGUIENTE}?`}
-        message={
-          decision === 'NO_APTO'
-            ? 'El expediente queda en espera en Recaudación hasta que se pague. La deuda queda registrada en las concesiones marcadas.'
-            : 'Revise lo que se envía:'
-        }
+        message={decision === 'NO_APTO' ? 'El expediente queda en espera en Recaudación hasta que se pague. La deuda queda registrada en las concesiones marcadas.' : 'Revise lo que se envía:'}
         confirmLabel={decision === 'NO_APTO' ? 'Sí, dejar en espera' : 'Sí, enviar'}
         cancelLabel="Cancelar"
         onConfirm={guardar}
@@ -227,12 +228,16 @@ export function PanelRecaudacion({ expediente, concesionDelTramite, actuales, nu
         />
       </ConfirmDialog>
 
-      {enEspera && (
-        <>
-          <AvisoDeudaPanel expedienteId={id} hooks={hooks} />
-          <CursoConDeudaPanel expedienteId={id} numero={expediente.numero} hooks={hooks} onTerminado={onTerminado} />
-        </>
+      {/* El aviso se habilita apenas se marca «Posee deuda». El backend arma el correo con las
+          deudas ya registradas: si todavía no hay ninguna, se registran al guardar. */}
+      {(enEspera || decision === 'NO_APTO') && (
+        <AvisoDeudaPanel
+          expedienteId={id}
+          hooks={hooks}
+          bloqueado={enEspera || deudaRegistrada ? undefined : 'Todavía no hay deuda registrada: guarde «queda en espera por deuda» y se habilita el envío.'}
+        />
       )}
+      {enEspera && hooks.useCursoConDeuda && <CursoConDeudaPanel expedienteId={id} numero={expediente.numero} useCursoConDeuda={hooks.useCursoConDeuda} onTerminado={onTerminado} />}
     </div>
   )
 }
@@ -255,9 +260,7 @@ function TarjetaDeuda({ titular }: { titular: EstadoDeudaTitular }) {
         <Icon name={conDeuda ? 'error' : 'check_circle'} filled className="text-[18px]!" />
         {conDeuda ? `Con deuda: ${titular.deudas.join(' · ')}` : 'Sin deuda registrada'}
       </p>
-      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-        {titular.concesiones.length ? `Concesiones: ${titular.concesiones.join(', ')}` : 'Sin concesiones otorgadas'}
-      </p>
+      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{titular.concesiones.length ? `Concesiones: ${titular.concesiones.join(', ')}` : 'Sin concesiones otorgadas'}</p>
     </div>
   )
 }
