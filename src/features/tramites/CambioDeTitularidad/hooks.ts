@@ -1,7 +1,6 @@
 // Hooks de datos del Cambio de Titularidad (backend real): consultas (useQuery) y acciones
 // (useMutation). Las pantallas usan solo estos hooks; nunca llaman a la API directamente.
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { FiltrosConcesiones } from '@/features/catastro/consultaConcesiones'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { titularesADto } from '../AltaDeConcesion/adaptadores'
 import type { NuevoTitularForm } from './schemas'
 import { cambioTitularidadApi, type IniciarCambioDto } from './api'
@@ -13,27 +12,13 @@ export const cambioKeys = {
   checklist: () => [...cambioKeys.all, 'checklist'] as const,
   enCurso: () => [...cambioKeys.all, 'en-curso'] as const,
   cambio: (id: string) => [...cambioKeys.all, 'cambio', id] as const,
-  busqueda: (filtros: FiltrosConcesiones, pagina: number) => [...cambioKeys.all, 'busqueda', filtros, pagina] as const,
 }
-
-/** Resultados por página en la búsqueda de concesiones del inicio. */
-export const CONCESIONES_POR_PAGINA = 10
 
 // --- Consultas -----------------------------------------------------------------
 
 /** El checklist casi no cambia: se pide una vez por sesión. */
 export function useChecklistCambio() {
   return useQuery({ queryKey: cambioKeys.checklist(), queryFn: cambioTitularidadApi.checklist, staleTime: Infinity })
-}
-
-/** Con `filtros` en null no pide nada: la lista arranca vacía hasta que el usuario busca. */
-export function useBuscarVigentes(filtros: FiltrosConcesiones | null, pagina: number) {
-  return useQuery({
-    queryKey: cambioKeys.busqueda(filtros ?? {}, pagina),
-    queryFn: () => cambioTitularidadApi.buscarVigentes(filtros!, pagina, CONCESIONES_POR_PAGINA),
-    enabled: !!filtros,
-    placeholderData: keepPreviousData,
-  })
 }
 
 export function useCambiosEnCurso() {

@@ -1,12 +1,32 @@
 import { useState, type FormEvent } from 'react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ErrorState, EmptyState, LoadingState } from '@/components/feedback/States'
 import { Field, Input, Select } from '@/components/form'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { useOpcionesFiltros, type ConcesionEncontrada, type FiltrosConcesiones } from '@/features/catastro/consultaConcesiones'
+import { useOpcionesFiltros, type ConcesionEncontrada, type FiltrosConcesiones, type ResultadoConcesiones } from '@/features/catastro/consultaConcesiones'
 import { formatearFecha } from '@/config/expedientes'
 import { cn } from '@/lib/cn'
-import { CONCESIONES_POR_PAGINA, useBuscarVigentes } from '../hooks'
+import { backend } from '@/services/api/backend'
+
+/** Resultados por página en la búsqueda de concesiones del inicio. */
+const CONCESIONES_POR_PAGINA = 10
+
+/**
+ * Búsqueda de concesiones VIGENTES en el backend (la misma consulta de Catastro, filtrada por estado).
+ * Con `filtros` en null no pide nada: la lista arranca vacía hasta que el usuario busca.
+ */
+function useBuscarVigentes(filtros: FiltrosConcesiones | null, pagina: number) {
+  return useQuery({
+    queryKey: ['backend', 'concesionesVigentes', filtros ?? {}, pagina],
+    queryFn: async () => {
+      const params = Object.fromEntries(Object.entries({ ...filtros, estado: 'VIGENTE', pagina, porPagina: CONCESIONES_POR_PAGINA }).filter(([, v]) => v !== undefined && v !== ''))
+      return (await backend.get<ResultadoConcesiones>('/concesiones/buscar', { params })).data
+    },
+    enabled: !!filtros,
+    placeholderData: keepPreviousData,
+  })
+}
 
 interface Props {
   seleccionada: ConcesionEncontrada | null
@@ -16,7 +36,7 @@ interface Props {
 const VACIO = { numeroConcesion: '', documento: '', titular: '', distrito: '', otorgadaDesde: '', otorgadaHasta: '' }
 
 /**
- * Búsqueda de la concesión (caso de uso, pasos 1-3): por N° de concesión, DNI / CUIL / CUIT,
+ * Búsqueda de la concesión (cambio de titularidad, ampliación / reducción: pasos 1-3): por N° de concesión, DNI / CUIL / CUIT,
  * titular, distrito y fecha de otorgamiento. Solo concesiones VIGENTES, desde el backend.
  */
 export function BuscadorVigentes({ seleccionada, onSeleccionar }: Props) {

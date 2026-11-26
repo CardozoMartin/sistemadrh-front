@@ -1,5 +1,11 @@
 import { Icon } from '@/components/ui/Icon'
-import type { DocumentoChecklist } from '../backend.types'
+
+/** Un papel del checklist de un trámite (GET /catalogos/documentos/:tipoTramite). */
+export interface DocumentoChecklist {
+  id: number
+  descripcion: string
+  obligatorio: boolean
+}
 
 interface Props {
   checklist: DocumentoChecklist[]
@@ -10,7 +16,7 @@ interface Props {
   faltantes?: number[]
 }
 
-/** Checklist de la documentación que trae el expediente (caso de uso, pasos 4-5). */
+/** Checklist de la documentación que trae el expediente (cambio de titularidad, ampliación / reducción). */
 export function ChecklistDocumentacion({ checklist, marcados, onToggle, faltantes = [] }: Props) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-5 md:p-6 dark:border-slate-700 dark:bg-slate-800">

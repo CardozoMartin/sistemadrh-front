@@ -20,8 +20,9 @@ export const tramitesRoutes: RouteObject[] = [
       altaDeConcesionRoute,
       // Circula por varias oficinas (backend real): cada pantalla controla su permiso u oficina.
       cambioDeTitularidadRoute,
+      reduccionAmpliacionRoute,
       // Pendientes de migrar al backend: por ahora, solo Catastro.
-      deOficina('catastro', [anulacionRoute, reduccionAmpliacionRoute, subdivisionRoute, reubicacionRoute, permisosRoute]),
+      deOficina('catastro', [anulacionRoute, subdivisionRoute, reubicacionRoute, permisosRoute]),
     ],
   },
 ]

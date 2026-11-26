@@ -52,9 +52,11 @@ export const ROUTES = {
     reduccionAmpliacion: {
       /** Búsqueda de la concesión; al elegirla se asigna el expediente. */
       inicio: '/tramites/reduccion-ampliacion',
-      superficie: (concesionId: string, numeroExpediente: string) =>
-        `/tramites/reduccion-ampliacion/superficie?${new URLSearchParams({ concesion: concesionId, expediente: numeroExpediente })}`,
+      /** Catastro: carga del plano (y corrección de lo observado). */
+      datos: (expedienteId: string) => `/tramites/reduccion-ampliacion/${expedienteId}/datos`,
       gestion: (expedienteId: string) => `/tramites/reduccion-ampliacion/expediente/${expedienteId}`,
+      /** El expediente en el circuito de oficinas (backend real). */
+      circuito: (expedienteId: string) => `/tramites/reduccion-ampliacion/circuito/${expedienteId}`,
     },
     subdivision: {
       /** Búsqueda de la concesión; al elegirla se asigna el expediente. */

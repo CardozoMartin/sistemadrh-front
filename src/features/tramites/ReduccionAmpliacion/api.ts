@@ -1,71 +1,43 @@
-// Peticiones de la Reducción / Ampliación. Solo hablan con la API (sin estado ni caché).
-import { datosConcesion, domiciliosDe, titularesDe, titularPrincipal } from '@/features/concesiones/datos'
-import type { EstadoExpediente, Expediente, Oficina } from '@/types/domain'
-import { expedientesApi } from '../../expedientes/api'
-import { validarInicioSobreConcesion, type InicioSobreConcesionForm } from '../shared/inicioSobreConcesion'
-import { NOMBRE_TIPO } from './superficie'
-import type { DatosExpedienteModificacion, SuperficieConcesion, TipoModificacion } from './types'
+// Peticiones de la Ampliación / Reducción al BACKEND REAL (NestJS + PostgreSQL / PostGIS).
+// Solo hablan con la API; el cacheo lo hacen los hooks (./hooks.ts). El backend valida todo
+// (concesión vigente, sin otro trámite en curso, checklist, el plano con PostGIS…) y devuelve el
+// mensaje listo para mostrar. Lo de las oficinas (Recaudación…Secretaría) es común: circuito.
+import { backend } from '@/services/api/backend'
+import type { titularesADto } from '../AltaDeConcesion/adaptadores'
+import { crearApiCircuito } from '../shared/circuitoBackend/api'
+import type { ModificacionBackend, ModificacionConAvisos, ModificacionEnLista, TipoModificacionBackend } from './backend.types'
 
-export interface IniciarModificacionInput {
-  inicio: InicioSobreConcesionForm
-  tipo: TipoModificacion
-  propuesta: SuperficieConcesion
-  estadosPendientes: EstadoExpediente[]
-  etapaId: string
-  oficinaOrigen: Oficina
-  oficinaDestino: Oficina
-  usuarioId: string
+export const RUTA_MODIFICACION = '/tramites/ampliacion-reduccion'
+
+export interface IniciarModificacionDto {
+  concesionId: string
+  tipo: TipoModificacionBackend
+  expediente: { numero: string; reparticion: string; anio: number }
+  /** Ids de los papeles del checklist que trae el expediente. */
+  documentacionPresentada: number[]
 }
 
-export const reduccionAmpliacionApi = {
-  /** Paso 1: la concesión elegida y el expediente asignado sirven para iniciar (sin crear nada todavía). */
-  async validarInicio(inicio: InicioSobreConcesionForm, estadosPendientes: EstadoExpediente[]): Promise<void> {
-    await validarInicioSobreConcesion({ ...inicio, estadosPendientes })
-  },
+const datos = <T>(p: Promise<{ data: T }>) => p.then((r) => r.data)
 
-  /**
-   * Paso 2 («Guardar y siguiente»): vuelve a validar y crea el expediente en la siguiente
-   * oficina con la superficie actual y la propuesta. La concesión no cambia hasta el cierre.
-   */
-  async iniciar({ inicio, tipo, propuesta, estadosPendientes, etapaId, oficinaOrigen, oficinaDestino, usuarioId }: IniciarModificacionInput): Promise<Expediente> {
-    const concesion = await validarInicioSobreConcesion({ ...inicio, estadosPendientes })
-    const ahora = new Date().toISOString()
-    const actual: SuperficieConcesion = {
-      coordenadas: concesion.poligono?.coordenadas ?? [],
-      hectareas: concesion.poligono?.hectareas ?? 0,
-      caudal: concesion.caudalAsignado,
-      usos: datosConcesion(concesion)?.usos.items ?? [],
-    }
-    const datos: DatosExpedienteModificacion = {
-      numeroExpediente: inicio.numeroExpediente,
-      concesionId: concesion.id,
-      numeroConcesion: concesion.numeroConcesion ?? '',
-      titulares: titularesDe(concesion),
-      domicilios: domiciliosDe(concesion),
-      tipo,
-      actual,
-      propuesta,
-    }
-    const resumen = `${NOMBRE_TIPO[tipo]} de ${actual.hectareas.toFixed(2)} ha a ${propuesta.hectareas.toFixed(2)} ha`
-    return expedientesApi.crear({
-      numero: inicio.numeroExpediente,
-      tramiteId: 'reduccion_ampliacion',
-      estadoId: 'en_tramite',
-      oficinaId: oficinaDestino,
-      fechaInicio: ahora,
-      fechaActualizacion: ahora,
-      titular: titularPrincipal(concesion),
-      ubicacion: concesion.ubicacion,
-      // Polígono y caudal propuestos (los vigentes siguen en la concesión hasta el cierre).
-      poligono: { coordenadas: propuesta.coordenadas, hectareas: propuesta.hectareas },
-      usoId: concesion.usoId,
-      caudalAsignado: propuesta.caudal,
-      numeroConcesion: concesion.numeroConcesion,
-      concesionOrigenId: concesion.id,
-      resolucion: null,
-      padronRentasPendiente: false,
-      historial: [{ oficinaId: oficinaOrigen, etapaId, resultado: 'aprobado', fecha: ahora, usuarioId, observaciones: `${resumen}.` }],
-      datos,
-    })
+export const modificacionApi = {
+  /** Trámites en curso (con `todos`, también los terminados). */
+  listar: (todos = false) => datos(backend.get<ModificacionEnLista[]>(RUTA_MODIFICACION, { params: todos ? { todos: true } : undefined })),
+  obtener: (expedienteId: string) => datos(backend.get<ModificacionBackend>(`${RUTA_MODIFICACION}/${expedienteId}`)),
+
+  // --- Catastro: inicio y carga -------------------------------------------------------
+  iniciar: (dto: IniciarModificacionDto) => datos(backend.post<ModificacionBackend>(RUTA_MODIFICACION, dto)),
+  /** El plano de la nueva superficie (KML o GeoJSON): el backend lo valida, lo mide y recalcula usos y caudal. */
+  subirPlano: (expedienteId: string, archivo: File) => {
+    const form = new FormData()
+    form.append('archivo', archivo)
+    return datos(backend.put<ModificacionConAvisos>(`${RUTA_MODIFICACION}/${expedienteId}/superficie`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }))
   },
+  /** El plano tal como se presentó (para descargarlo). */
+  archivoPlano: (expedienteId: string) => datos(backend.get<Blob>(`${RUTA_MODIFICACION}/${expedienteId}/superficie/archivo`, { responseType: 'blob' })),
+  /** Optativo: nuevos titulares (mismo cuerpo que el alta) / quitarlos. */
+  guardarTitulares: (expedienteId: string, dto: ReturnType<typeof titularesADto>) => datos(backend.put<ModificacionBackend>(`${RUTA_MODIFICACION}/${expedienteId}/titulares`, dto)),
+  quitarTitulares: (expedienteId: string) => datos(backend.delete<ModificacionBackend>(`${RUTA_MODIFICACION}/${expedienteId}/titulares`)),
 }
+
+/** Las acciones de las oficinas (comunes a los trámites sobre una concesión), sobre la ruta de este trámite. */
+export const circuitoModificacionApi = crearApiCircuito(RUTA_MODIFICACION)

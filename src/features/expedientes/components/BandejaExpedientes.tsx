@@ -19,6 +19,7 @@ import { useBandeja, useCancelarAlta, useLiberarAlta, useReasignables, useReasig
 const RUTA_TRABAJO: Record<string, (id: string) => string> = {
   ALTA_CONCESION: ROUTES.tramites.altaConcesion.circuito,
   CAMBIO_TITULARIDAD: ROUTES.tramites.cambioTitularidad.circuito,
+  AMPLIACION_REDUCCION: ROUTES.tramites.reduccionAmpliacion.circuito,
   BAJA_POZO: ROUTES.pozo.baja,
 }
 
@@ -30,8 +31,6 @@ const ESTADO: Partial<Record<EstadoExpedienteBackend, { texto: string; color: st
 /** En Recaudación, «en espera» es el «No apto» por deuda: queda pausado hasta que se pague. */
 const etiquetaEstado = (e: ExpedienteEnBandeja) =>
   e.estado === 'EN_ESPERA' && e.etapa === 'RECAUDACION' ? { texto: 'Deuda pendiente', color: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300' } : ESTADO[e.estado]
-
-const formatear = (iso: string) => new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
 
 /** Solo el número del expediente («123/332-2026» → «123»); el completo queda en el título. */
 const soloNumero = (numero: string) => numero.split('/')[0]
@@ -85,6 +84,24 @@ function AvisoPlazos({ expedientes }: { expedientes: ExpedienteEnBandeja[] }) {
 }
 
 type Grupo = 'sin-revisar' | 'pendientes'
+
+/** Acción secundaria de la fila: solo ícono, con el nombre en el tooltip y para lectores de pantalla. */
+function AccionIcono({ icono, etiqueta, ayuda, onClick }: { icono: string; etiqueta: string; ayuda: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      title={`${etiqueta}: ${ayuda}`}
+      aria-label={etiqueta}
+      onClick={onClick}
+      className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-4 focus-visible:ring-slate-400/30 focus-visible:outline-none dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-slate-100"
+    >
+      <Icon name={icono} className="text-xl!" />
+    </button>
+  )
+}
+
+/** Hueco del tamaño de un ícono: mantiene las acciones alineadas entre filas cuando una no corresponde. */
+const HuecoAccion = () => <span aria-hidden className="size-9 shrink-0" />
 
 /** Un alta que todavía está en la carga (no se envió a ninguna oficina) se puede cancelar si se inició por error. */
 const sePuedeCancelar = (e: ExpedienteEnBandeja) => e.tipoTramite === 'ALTA_CONCESION' && e.etapa === 'CARGA'
@@ -229,67 +246,96 @@ function Tabla({ oficina, grupo, expedientes }: { oficina: OficinaBackend; grupo
   const conPlazo = expedientes.some((e) => e.plazo)
   const conDistrito = expedientes.some((e) => e.distrito !== undefined)
 
+  // Qué acciones secundarias puede ver el usuario en cada fila (Liberar, Reasignar, Anular).
+  const acciones = (e: ExpedienteEnBandeja) => ({
+    liberar: e.tipoTramite === 'ALTA_CONCESION' && (e.tomadoPorId === usuario?.id || supervisa),
+    reasignar: e.tipoTramite === 'ALTA_CONCESION' && supervisa,
+    anular: sePuedeCancelar(e) && puede('ALTA_INICIAR') && (e.tomadoPorId === usuario?.id || supervisa),
+  })
+  // Columnas de íconos que usa la tabla: si ninguna fila tiene una acción, no se reserva su lugar.
+  const columnas = expedientes.reduce(
+    (c, e) => {
+      const a = acciones(e)
+      return { liberar: c.liberar || a.liberar, reasignar: c.reasignar || a.reasignar, anular: c.anular || a.anular }
+    },
+    { liberar: false, reasignar: false, anular: false },
+  )
+
+  const th = 'px-3 py-3 first:pl-6 last:pr-6'
+  const td = 'px-3 py-3 align-middle first:pl-6 last:pr-6'
+
   return (
     <>
       {tomar.isError && <Alert className="m-4">{mensajeDeError(tomar.error)}</Alert>}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-225 text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:bg-slate-800/60 dark:text-slate-400">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-500 uppercase dark:bg-slate-800/60 dark:text-slate-400">
             <tr>
-              <th className="px-4 py-3">N° Expediente</th>
-              <th className="px-4 py-3">Titular</th>
-              <th className="px-4 py-3">Trámite</th>
-              {conDistrito && <th className="px-4 py-3">Distrito</th>}
-              <th className="px-4 py-3">Of. anterior</th>
-              <th className="px-4 py-3">Fecha de recepción</th>
-              {conPlazo && <th className="px-4 py-3">Plazo</th>}
-              {grupo === 'pendientes' && <th className="px-4 py-3">Responsable</th>}
-              <th className="px-4 py-3 text-right">Acciones</th>
+              <th className={th}>N° Exp.</th>
+              <th className={th}>Titular</th>
+              <th className={th}>Trámite</th>
+              {conDistrito && <th className={th}>Distrito</th>}
+              <th className={th}>Of. anterior</th>
+              <th className={th}>Recepción</th>
+              {conPlazo && <th className={th}>Plazo</th>}
+              {grupo === 'pendientes' && <th className={th}>Responsable</th>}
+              <th className={cn(th, 'text-right')}>
+                <span className="sr-only">Acciones</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {expedientes.map((e) => {
               const ruta = RUTA_TRABAJO[e.tipoTramite]?.(e.id)
+              const a = acciones(e)
+              const estado = etiquetaEstado(e)
               return (
                 <tr key={e.id} className={cn('hover:bg-slate-50 dark:hover:bg-slate-800/40', e.plazo?.semaforo === 'VENCIDO' && 'bg-red-50/60 dark:bg-red-500/5')}>
-                  <td className="px-4 py-3">
-                    <span title={`Expediente ${e.numero}`} className="font-semibold whitespace-nowrap text-slate-900 tabular-nums dark:text-white">
+                  <td className={td}>
+                    <span title={`Expediente ${e.numero}`} className="block font-semibold whitespace-nowrap text-slate-900 tabular-nums dark:text-white">
                       {soloNumero(e.numero)}
                     </span>
-                    {etiquetaEstado(e) && <span className={cn('ml-2 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap', etiquetaEstado(e)!.color)}>{etiquetaEstado(e)!.texto}</span>}
-                    {e.cursoConDeuda && (
-                      <span title="Recaudación dio curso con deuda pendiente. Ver nota en el expediente." className="ml-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-red-700 dark:bg-red-500/15 dark:text-red-300">
-                        <Icon name="warning" className="text-[14px]!" />
-                        Deuda pendiente
-                      </span>
+                    {(estado || e.cursoConDeuda) && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {estado && <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap', estado.color)}>{estado.texto}</span>}
+                        {e.cursoConDeuda && (
+                          <span title="Recaudación dio curso con deuda pendiente. Ver nota en el expediente." className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-red-700 dark:bg-red-500/15 dark:text-red-300">
+                            <Icon name="warning" className="text-[13px]!" />
+                            Deuda pendiente
+                          </span>
+                        )}
+                      </div>
                     )}
                   </td>
-                  <td className="px-4 py-3">{e.titular ?? <span className="text-slate-400">No registrado</span>}</td>
-                  <td className="px-4 py-3">
-                    {nombreTramite(e.tipoTramite)}
-                    <span className="block text-xs text-slate-500 dark:text-slate-400">{e.etapaNombre}</span>
+                  <td className={cn(td, 'min-w-36')}>{e.titular ?? <span className="text-slate-400 italic">No registrado</span>}</td>
+                  <td className={td}>
+                    <span className="block font-medium whitespace-nowrap text-slate-800 dark:text-slate-100">{nombreTramite(e.tipoTramite)}</span>
+                    <span className="block text-xs whitespace-nowrap text-slate-500 dark:text-slate-400">{e.etapaNombre}</span>
                   </td>
-                  {conDistrito && <td className="px-4 py-3 whitespace-nowrap">{e.distrito ?? <span className="text-slate-400">No registrado</span>}</td>}
-                  <td className="px-4 py-3">
+                  {conDistrito && <td className={cn(td, 'whitespace-nowrap')}>{e.distrito ?? <span className="text-slate-400 italic">No registrado</span>}</td>}
+                  <td className={td}>
                     {e.vieneDeNombre ? (
                       <>
-                        {e.vieneDeNombre}
+                        <span className="whitespace-nowrap">{e.vieneDeNombre}</span>
                         {e.esDevolucion && <span className="block text-xs font-semibold text-amber-600">Devuelto con observaciones</span>}
                       </>
                     ) : (
-                      nombreOficina
+                      <span className="whitespace-nowrap">{nombreOficina}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className={cn(td, 'whitespace-nowrap tabular-nums')}>
                     {e.enLaOficinaDesde ? (
-                      <span className="tabular-nums">{formatear(e.enLaOficinaDesde)}</span>
+                      <>
+                        <span className="block">{new Date(e.enLaOficinaDesde).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                        <span className="block text-xs text-slate-500 dark:text-slate-400">{new Date(e.enLaOficinaDesde).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} h</span>
+                      </>
                     ) : (
                       <span className="text-slate-400">—</span>
                     )}
                   </td>
-                  {conPlazo && <td className="px-4 py-3">{e.plazo ? <Plazo plazo={e.plazo} /> : <span className="text-slate-400">—</span>}</td>}
-                  {grupo === 'pendientes' && <td className="px-4 py-3">{e.tomadoPor}</td>}
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                  {conPlazo && <td className={td}>{e.plazo ? <Plazo plazo={e.plazo} /> : <span className="text-slate-400">—</span>}</td>}
+                  {grupo === 'pendientes' && <td className={cn(td, 'min-w-32')}>{e.tomadoPor}</td>}
+                  <td className={cn(td, 'text-right whitespace-nowrap')}>
                     {!ruta ? (
                       <span className="text-xs text-slate-400">No disponible</span>
                     ) : grupo === 'sin-revisar' ? (
@@ -297,30 +343,25 @@ function Tabla({ oficina, grupo, expedientes }: { oficina: OficinaBackend; grupo
                         Tomar
                       </Button>
                     ) : (
-                      <div className="flex items-center justify-end gap-1">
-                        {e.tipoTramite === 'ALTA_CONCESION' && (e.tomadoPorId === usuario?.id || supervisa) && (
-                          <Button size="sm" variant="ghost" iconLeft="lock_open" title="Soltar el expediente: vuelve a «sin revisar» y otro lo puede tomar" onClick={() => setALiberar(e)}>
-                            Liberar
-                          </Button>
-                        )}
-                        {e.tipoTramite === 'ALTA_CONCESION' && supervisa && (
-                          <Button size="sm" variant="ghost" iconLeft="swap_horiz" title="Pasar el expediente a otro usuario de Catastro" onClick={() => setAReasignar(e)}>
-                            Reasignar
-                          </Button>
-                        )}
-                        {sePuedeCancelar(e) && puede('ALTA_INICIAR') && (e.tomadoPorId === usuario?.id || supervisa) && (
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            iconLeft="cancel"
-                            className="cursor-pointer border border-transparent bg-red-500! shadow-none hover:border-red-700 hover:bg-red-400!"
-                            title="Anular expediente registrado por error"
-                            onClick={() => setACancelar(e)}
-                          >
-                            Anular
-                          </Button>
-                        )}
-                        <Button size="sm" iconRight="arrow_forward" onClick={() => navigate(ruta)}>
+                      <div className="flex items-center justify-end gap-0.5">
+                        {columnas.liberar && (a.liberar ? <AccionIcono icono="lock_open" etiqueta="Liberar" ayuda="vuelve a «sin revisar» y otro lo puede tomar" onClick={() => setALiberar(e)} /> : <HuecoAccion />)}
+                        {columnas.reasignar && (a.reasignar ? <AccionIcono icono="swap_horiz" etiqueta="Reasignar" ayuda="pasar el expediente a otro usuario de Catastro" onClick={() => setAReasignar(e)} /> : <HuecoAccion />)}
+                        {columnas.anular &&
+                          (a.anular ? (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              iconLeft="cancel"
+                              title="Anular expediente registrado por error"
+                              className="ml-1 w-26 border-red-300 px-3 text-red-600 hover:border-red-400 hover:bg-red-50 focus-visible:ring-red-500/30 dark:border-red-500/40 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-500/10"
+                              onClick={() => setACancelar(e)}
+                            >
+                              Anular
+                            </Button>
+                          ) : (
+                            <span aria-hidden className="ml-1 w-26 shrink-0" />
+                          ))}
+                        <Button size="sm" iconRight="arrow_forward" className="ml-2 px-3" onClick={() => navigate(ruta)}>
                           Abrir
                         </Button>
                       </div>
