@@ -5,7 +5,7 @@ import { titularesADto } from '../AltaDeConcesion/adaptadores'
 import type { NuevoTitularForm } from './schemas'
 import { cambioTitularidadApi, type IniciarCambioDto } from './api'
 import type { CambioBackend, DictamenDto } from './backend.types'
-import { altaKeys } from '../AltaDeConcesion/hooks'
+import { expedienteKeys } from '../shared/circuito/expediente'
 
 export const cambioKeys = {
   all: ['backend', 'cambiosTitularidad'] as const,
@@ -95,8 +95,8 @@ function useAccionCambio<TInput, TOutput>(id: string, accion: (id: string, input
       void qc.invalidateQueries({ queryKey: cambioKeys.cambio(id) })
       void qc.invalidateQueries({ queryKey: cambioKeys.enCurso() })
       // Historial y bandejas de oficina (claves del alta: son comunes a todos los trámites).
-      void qc.invalidateQueries({ queryKey: altaKeys.historial(id) })
-      void qc.invalidateQueries({ queryKey: altaKeys.bandejas() })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.historial(id) })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.bandejas() })
     },
   })
 }

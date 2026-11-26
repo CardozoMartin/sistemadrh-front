@@ -1,26 +1,14 @@
 // Respuestas del backend real para el Cambio de Titularidad (GET /tramites/cambio-titularidad…).
 // Mismos nombres que devuelve el backend (src/tramites/cambio-titularidad/cambio-titularidad.service.ts).
-// Lo de Recaudación (deuda, aviso por correo) es común a los trámites: se reusan los tipos del alta.
-import type { AvisoDeudaBackend } from '../AltaDeConcesion/backend.types'
-
-export type { AntecedentesDeuda, AvisoDeudaBackend, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../AltaDeConcesion/backend.types'
+// Lo común a los trámites (personas, resumen del expediente, checklist, deuda) vive en shared.
 import type { Oficina } from '@/types/domain'
+import type { AvisoDeudaBackend } from '../shared/circuito/deuda.types'
+import type { PersonaTramite as PersonaCambio, ResumenExpediente } from '../shared/tipos'
 
-/** Una persona (titular actual o propuesto). Los datos sensibles pueden venir ocultos según el permiso. */
-export interface PersonaCambio {
-  personaId: string
-  nombreCompleto: string
-  tipoPersona: 'FISICA' | 'JURIDICA'
-  tipoDocumento: 'DNI' | 'CUIL' | 'CUIT' | null
-  documento: string | null
-  apellido: string | null
-  nombre: string | null
-  fechaNacimiento: string | null
-  razonSocial: string | null
-  fechaConstitucion: string | null
-  email: string | null
-  telefono: string | null
-}
+// Comunes a los trámites (viven en shared); se re-exportan para no cambiar los imports del cambio.
+export type { AntecedentesDeuda, AvisoDeudaBackend, BorradorAvisoDeuda, NotificarDeudaDto, ResultadoAvisoDeuda } from '../shared/circuito/deuda.types'
+export type { DocumentoChecklist } from '../shared/checklist'
+export type { PersonaTramite as PersonaCambio, ResumenExpediente } from '../shared/tipos'
 
 /** Domicilio legal: nombres del catálogo y código del distrito (los mismos valores que el formulario). */
 export interface DomicilioCambio {
@@ -56,20 +44,6 @@ export interface ResolucionDto {
   fecha: string
   observaciones?: string
   archivo: File
-}
-
-/** Dónde está el expediente (resumen común a todos los trámites). */
-export interface ResumenExpediente {
-  id: string
-  numero: string
-  tipoTramite: string
-  estado: string
-  etapa: string
-  etapaNombre: string
-  oficinaActual: string
-  oficinaNombre: string
-  tomadoPor: { id: string; nombre: string } | null
-  tomadoEn: string | null
 }
 
 /** GET /tramites/cambio-titularidad/:id (y lo que devuelve cada acción). */
@@ -115,16 +89,6 @@ export interface CambioEnLista {
   oficinaActual: Oficina
   nuevoTitular: string | null
   creadoEn: string
-}
-
-/** GET /catalogos/documentos/CAMBIO_TITULARIDAD: un papel del checklist (solo los activos). */
-export interface DocumentoChecklist {
-  id: number
-  tipoTramite: 'CAMBIO_TITULARIDAD'
-  descripcion: string
-  obligatorio: boolean
-  orden: number
-  activo: boolean
 }
 
 /** Etapas en las que Catastro edita la propuesta: la carga y la corrección de lo observado (igual que el backend). */

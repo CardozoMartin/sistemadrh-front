@@ -1,36 +1,105 @@
-// Hooks de datos de la Anulación: las pantallas usan solo estos hooks.
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useDominio } from '@/hooks/useDominio'
-import { expedienteKeys } from '../../expedientes/hooks'
-import type { InicioSobreConcesionForm } from '../shared/inicioSobreConcesion'
-import { anulacionApi } from './api'
-import type { VerificacionAnulacionForm } from './schemas'
+// Hooks de datos de la Anulación de Concesión (backend real): consultas (useQuery) y acciones
+// (useMutation). Las pantallas usan solo estos hooks; nunca llaman a la API directamente.
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { expedienteKeys } from '../shared/circuito/expediente'
+import { anulacionApi, type IniciarAnulacionDto } from './api'
+import type { Dictamen, OficinaDictamen } from '../shared/circuito/PanelDictamen'
+import type { AnulacionBackend } from './backend.types'
 
-export function useValidarInicioAnulacion() {
-  const { estadosPendientes } = useDominio()
-  return useMutation({ mutationFn: (inicio: InicioSobreConcesionForm) => anulacionApi.validarInicio(inicio, estadosPendientes) })
+export const anulacionKeys = {
+  all: ['backend', 'anulaciones'] as const,
+  checklist: () => [...anulacionKeys.all, 'checklist'] as const,
+  enCurso: () => [...anulacionKeys.all, 'en-curso'] as const,
+  anulacion: (id: string) => [...anulacionKeys.all, 'anulacion', id] as const,
+  /** Cuelgan de la anulación: se refrescan con cada acción sobre ella. */
+  recaudacion: (id: string) => [...anulacionKeys.anulacion(id), 'recaudacion'] as const,
+  avisoDeuda: (id: string) => [...anulacionKeys.anulacion(id), 'aviso-deuda'] as const,
 }
 
-/** Crea el expediente de anulación en la siguiente oficina (etapas y usuario salen del dominio). */
+// --- Consultas -----------------------------------------------------------------
+
+/** El checklist casi no cambia: se pide una vez por sesión. */
+export function useChecklistAnulacion() {
+  return useQuery({ queryKey: anulacionKeys.checklist(), queryFn: anulacionApi.checklist, staleTime: Infinity })
+}
+
+export function useAnulacionesEnCurso() {
+  return useQuery({ queryKey: anulacionKeys.enCurso(), queryFn: () => anulacionApi.listar() })
+}
+
+export function useAnulacion(id: string | undefined) {
+  return useQuery({ queryKey: anulacionKeys.anulacion(id ?? ''), queryFn: () => anulacionApi.obtener(id!), enabled: !!id })
+}
+
+// --- Acciones --------------------------------------------------------------------
+
+/** Después de cada acción: la anulación actualizada a la caché; la lista y las bandejas, a refrescar. */
+function useAlActualizar() {
+  const qc = useQueryClient()
+  return (anulacion: AnulacionBackend) => {
+    qc.setQueryData(anulacionKeys.anulacion(anulacion.expediente.id), anulacion)
+    void qc.invalidateQueries({ queryKey: anulacionKeys.enCurso() })
+    void qc.invalidateQueries({ queryKey: expedienteKeys.bandejas() })
+  }
+}
+
 export function useIniciarAnulacion() {
   const qc = useQueryClient()
-  const { etapas, usuarios, estadosPendientes } = useDominio()
+  const alActualizar = useAlActualizar()
   return useMutation({
-    mutationFn: ({ inicio, verificacion }: { inicio: InicioSobreConcesionForm; verificacion: VerificacionAnulacionForm }) => {
-      const [etapaCarga, etapaSiguiente] = etapas
-      // TODO(login): usuario autenticado. Mientras tanto, el primer usuario de la oficina.
-      const usuario = usuarios.find((u) => u.oficinaId === etapaCarga?.oficinaId)
-      if (!etapaCarga || !etapaSiguiente || !usuario) throw new Error('El circuito de oficinas no está configurado en el sistema.')
-      return anulacionApi.iniciar({
-        inicio,
-        verificacion,
-        estadosPendientes,
-        etapaId: etapaCarga.id,
-        oficinaOrigen: etapaCarga.oficinaId,
-        oficinaDestino: etapaSiguiente.oficinaId,
-        usuarioId: usuario.id,
-      })
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: expedienteKeys.all }),
+    mutationFn: (dto: IniciarAnulacionDto) => anulacionApi.iniciar(dto),
+    onSuccess: alActualizar,
+    // Aun si falla (ej: se cortó la respuesta), la lista se refresca: puede haberse creado igual.
+    onError: () => void qc.invalidateQueries({ queryKey: anulacionKeys.enCurso() }),
   })
 }
+
+export function useEnviarAnulacion(id: string) {
+  const alActualizar = useAlActualizar()
+  return useMutation({ mutationFn: () => anulacionApi.enviar(id), onSuccess: alActualizar })
+}
+
+export function useCancelarAnulacion(id: string) {
+  const alActualizar = useAlActualizar()
+  return useMutation({ mutationFn: (motivo: string) => anulacionApi.cancelar(id, motivo), onSuccess: alActualizar })
+}
+
+// --- Circuito y Recaudación ------------------------------------------------------
+
+/** Concesiones de los titulares y si tienen deuda. Cuelga de la anulación: se refresca con cada acción. */
+export function useAntecedentesDeudaAnulacion(id: string) {
+  return useQuery({ queryKey: anulacionKeys.recaudacion(id), queryFn: () => anulacionApi.antecedentesDeuda(id) })
+}
+
+/** Borrador del aviso de deuda: se pide al abrirlo y no se cachea (las deudas pueden cambiar). */
+export function useBorradorAvisoAnulacion(id: string, habilitado: boolean) {
+  return useQuery({ queryKey: anulacionKeys.avisoDeuda(id), queryFn: () => anulacionApi.borradorAvisoDeuda(id), enabled: habilitado, staleTime: 0, gcTime: 0 })
+}
+
+/** Una acción del circuito: después se refrescan la anulación, sus antecedentes, el historial y las bandejas. */
+function useAccionAnulacion<TInput, TOutput>(id: string, accion: (id: string, input: TInput) => Promise<TOutput>) {
+  const qc = useQueryClient()
+  return useMutation<TOutput, Error, TInput>({
+    mutationFn: (input) => accion(id, input),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: anulacionKeys.anulacion(id) })
+      void qc.invalidateQueries({ queryKey: anulacionKeys.enCurso() })
+      // Historial y bandejas de oficina (claves del alta: son comunes a todos los trámites).
+      void qc.invalidateQueries({ queryKey: expedienteKeys.historial(id) })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.bandejas() })
+    },
+  })
+}
+
+export const useTomarAnulacion = (id: string) => useAccionAnulacion<void, unknown>(id, (i) => anulacionApi.tomar(i))
+export const useVerificarDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.verificarDeuda)
+export const useCursoConDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.cursoConDeuda)
+export const useNotificarDeudaAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.notificarDeuda)
+export const useDictaminarAnulacion = (id: string, oficina: OficinaDictamen) =>
+  useAccionAnulacion(id, (i, dto: Dictamen) => anulacionApi.dictaminar(i, oficina, dto))
+
+/** Secretaría General: registra la resolución con su PDF y pasa a Catastro (baja). */
+export const useResolucionAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.resolucion)
+
+/** Catastro: baja (visto bueno final). La concesión queda ANULADA. */
+export const useVerificacionFinalAnulacion = (id: string) => useAccionAnulacion(id, anulacionApi.verificacionFinal)

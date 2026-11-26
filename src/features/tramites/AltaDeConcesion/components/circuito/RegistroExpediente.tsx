@@ -4,7 +4,7 @@ import { Icon } from '@/components/ui/Icon'
 import { cn } from '@/lib/cn'
 import { MODO_DEMO } from '@/services/demo/modo'
 import { AuditoriaExpediente } from './AuditoriaExpediente'
-import { HistorialAlta } from './HistorialAlta'
+import { HistorialExpediente } from '../../../shared/circuito/HistorialExpediente'
 
 type Pestania = 'historial' | 'auditoria'
 
@@ -53,7 +53,7 @@ export function RegistroExpediente({ expedienteId }: { expedienteId: string }) {
       </div>
       {abierta && (
         <div role="tabpanel" className="border-t border-slate-200 p-6 dark:border-slate-700">
-          {abierta === 'historial' ? <HistorialAlta expedienteId={expedienteId} /> : <AuditoriaExpediente expedienteId={expedienteId} />}
+          {abierta === 'historial' ? <HistorialExpediente expedienteId={expedienteId} /> : <AuditoriaExpediente expedienteId={expedienteId} />}
         </div>
       )}
     </Card>

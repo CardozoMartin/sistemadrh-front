@@ -20,6 +20,8 @@ const RUTA_TRABAJO: Record<string, (id: string) => string> = {
   ALTA_CONCESION: ROUTES.tramites.altaConcesion.circuito,
   CAMBIO_TITULARIDAD: ROUTES.tramites.cambioTitularidad.circuito,
   AMPLIACION_REDUCCION: ROUTES.tramites.reduccionAmpliacion.circuito,
+  ANULACION: ROUTES.tramites.anulacion.circuito,
+  REUBICACION: ROUTES.tramites.reubicacion.circuito,
   BAJA_POZO: ROUTES.pozo.baja,
 }
 

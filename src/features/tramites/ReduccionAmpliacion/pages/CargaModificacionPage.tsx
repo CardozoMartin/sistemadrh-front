@@ -12,7 +12,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { ROUTES } from '@/config/routes'
 import { useActor } from '@/features/auth/useActor'
 import { esNoEncontrado, mensajeDeError } from '@/services/api/errors'
-import { HistorialAlta } from '../../AltaDeConcesion/components/circuito/HistorialAlta'
+import { HistorialExpediente } from '../../shared/circuito/HistorialExpediente'
 import { TitularesDomiciliosFields } from '../../shared'
 import { PasosTramite } from '../../shared/components/PasosTramite'
 import { ResumenEnvio } from '../../shared/circuitoBackend/componentes'
@@ -183,7 +183,7 @@ function Carga({ datos }: { datos: ModificacionBackend }) {
         {correccion && (
           <Card className="p-6">
             <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">Historial del expediente</h2>
-            <HistorialAlta expedienteId={id} />
+            <HistorialExpediente expedienteId={id} />
           </Card>
         )}
       </div>

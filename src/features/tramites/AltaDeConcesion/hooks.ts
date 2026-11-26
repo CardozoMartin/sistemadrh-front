@@ -5,6 +5,7 @@
 // refrescan el historial y las bandejas (el expediente cambió de oficina o de estado).
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { expedienteKeys } from '../shared/circuito/expediente'
 import { altaConcesionApi } from './api'
 import type { AltaBackend, NotificarDeudaDto, OficinaBackend } from './backend.types'
 
@@ -12,11 +13,12 @@ export const altaKeys = {
   all: ['backend', 'altas'] as const,
   situaciones: () => [...altaKeys.all, 'situaciones-legales'] as const,
   alta: (id: string) => [...altaKeys.all, 'alta', id] as const,
-  historial: (id: string) => [...altaKeys.all, 'historial', id] as const,
+  /** Comunes a todos los trámites (ver shared/circuito/expediente). */
+  historial: expedienteKeys.historial,
   /** Bajo la clave del historial: se refresca cada vez que se refresca el historial. */
   auditoria: (id: string) => [...altaKeys.historial(id), 'auditoria'] as const,
   emails: (id: string) => [...altaKeys.all, 'emails', id] as const,
-  bandejas: () => [...altaKeys.all, 'bandeja'] as const,
+  bandejas: expedienteKeys.bandejas,
   bandeja: (oficina: OficinaBackend) => [...altaKeys.bandejas(), oficina] as const,
   deudas: (personaId: string) => [...altaKeys.all, 'deudas', personaId] as const,
   /** Bajo la clave del alta: se refresca con cada acción sobre el alta. */
@@ -44,10 +46,6 @@ export function useAltaMientrasEspera(id: string, esperando: boolean) {
     const intervalo = setInterval(() => void qc.invalidateQueries({ queryKey: altaKeys.alta(id), exact: true }), 30_000)
     return () => clearInterval(intervalo)
   }, [qc, id, esperando])
-}
-
-export function useHistorial(id: string | undefined) {
-  return useQuery({ queryKey: altaKeys.historial(id ?? ''), queryFn: () => altaConcesionApi.historial(id!), enabled: !!id })
 }
 
 export function useAuditoria(id: string | undefined) {

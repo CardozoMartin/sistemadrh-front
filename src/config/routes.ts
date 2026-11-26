@@ -45,9 +45,11 @@ export const ROUTES = {
     anulacion: {
       /** Búsqueda de la concesión; al elegirla se asigna el expediente. */
       inicio: '/tramites/anulacion',
-      verificacion: (concesionId: string, numeroExpediente: string) =>
-        `/tramites/anulacion/verificacion?${new URLSearchParams({ concesion: concesionId, expediente: numeroExpediente })}`,
+      /** Verificación de datos e «Iniciar anulación» (backend real). */
+      verificacion: (expedienteId: string) => `/tramites/anulacion/${expedienteId}/verificacion`,
       gestion: (expedienteId: string) => `/tramites/anulacion/expediente/${expedienteId}`,
+      /** El expediente en el circuito de oficinas (backend real). */
+      circuito: (expedienteId: string) => `/tramites/anulacion/circuito/${expedienteId}`,
     },
     reduccionAmpliacion: {
       /** Búsqueda de la concesión; al elegirla se asigna el expediente. */
@@ -67,7 +69,14 @@ export const ROUTES = {
       datos: (borradorId: string) => `/tramites/subdivision/${borradorId}/datos`,
       gestion: (expedienteId: string) => `/tramites/subdivision/expediente/${expedienteId}`,
     },
-    reubicacion: '/tramites/reubicacion',
+    reubicacion: {
+      /** Búsqueda de la concesión, expediente, checklist y motivo. */
+      inicio: '/tramites/reubicacion',
+      /** Catastro: nuevo polígono y forma de servicio, y envío a Recaudación. */
+      propuesta: (expedienteId: string) => `/tramites/reubicacion/${expedienteId}/propuesta`,
+      /** El expediente en el circuito de oficinas (backend real). */
+      circuito: (expedienteId: string) => `/tramites/reubicacion/circuito/${expedienteId}`,
+    },
     permisos: '/tramites/permisos',
   },
 

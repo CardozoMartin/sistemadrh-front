@@ -12,19 +12,17 @@ import { Icon } from '@/components/ui/Icon'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { esNoEncontrado, mensajeDeError } from '@/services/api/errors'
 import { TitularesDomiciliosFields } from '../../shared'
+import { errorMotivoCancelacion, MIN_MOTIVO_CANCELACION, motivoCancelacionValido } from '../../shared/circuito/motivo'
 import { PasosTramite } from '../../shared/components/PasosTramite'
 import { propuestaAFormulario } from '../adaptadores'
 import { estaEnCarga, type CambioBackend } from '../backend.types'
-import { nombres, numeroConcesion } from '../formato'
+import { nombres, numeroConcesion } from '../../shared/formato'
 import { useCambio, useCancelarCambio, useEnviarCambio, useGuardarTitularesCambio } from '../hooks'
 import { crearNuevoTitularSchema, type NuevoTitularForm } from '../schemas'
 
 type Dialogo = 'cancelar' | 'enviar' | 'enviado' | null
 
 const TITULO = 'Pre-carga Nuevo Titular'
-
-/** Largo mínimo del motivo para cancelar (lo mismo exige el backend). */
-const MIN_MOTIVO = 10
 
 const papeles = (n: number) => `${n} papel${n === 1 ? '' : 'es'} presentado${n === 1 ? '' : 's'}`
 
@@ -95,7 +93,7 @@ function NuevoTitular({ datos }: { datos: CambioBackend }) {
   const cancelar = useCancelarCambio(id)
   const [dialogo, setDialogo] = useState<Dialogo>(null)
   const [motivo, setMotivo] = useState('')
-  const motivoValido = motivo.trim().length >= MIN_MOTIVO
+  const motivoValido = motivoCancelacionValido(motivo)
   const schema = useMemo(() => crearNuevoTitularSchema(cambio.titularesActuales.map((t) => t.documento ?? '')), [cambio.titularesActuales])
 
   const form = useForm<NuevoTitularForm>({
@@ -209,8 +207,8 @@ function NuevoTitular({ datos }: { datos: CambioBackend }) {
           id="motivo-cancelacion"
           label="Motivo"
           required
-          hint={`Al menos ${MIN_MOTIVO} caracteres.`}
-          error={motivo && !motivoValido ? `Explique el motivo (al menos ${MIN_MOTIVO} caracteres).` : undefined}
+          hint={`Al menos ${MIN_MOTIVO_CANCELACION} caracteres.`}
+          error={errorMotivoCancelacion(motivo)}
         >
           <textarea
             id="motivo-cancelacion"

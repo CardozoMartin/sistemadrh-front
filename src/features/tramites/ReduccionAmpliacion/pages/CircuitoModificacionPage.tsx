@@ -9,9 +9,9 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { ROUTES, RUTA_BANDEJA } from '@/config/routes'
 import { AvisoSoloConsulta, useActor } from '@/features/auth/useActor'
 import { esNoEncontrado, mensajeDeError, toApiError } from '@/services/api/errors'
-import { AvisoDeuda } from '../../AltaDeConcesion/components/circuito/AvisoDeuda'
-import { DondeEsta } from '../../AltaDeConcesion/components/circuito/DondeEsta'
-import { HistorialAlta } from '../../AltaDeConcesion/components/circuito/HistorialAlta'
+import { AvisoDeuda } from '../../shared/circuito/AvisoDeuda'
+import { DondeEsta } from '../../shared/circuito/DondeEsta'
+import { HistorialExpediente } from '../../shared/circuito/HistorialExpediente'
 import { DocumentacionRevision } from '../../shared/circuitoBackend/componentes'
 import { CircuitoProvider, useTomar } from '../../shared/circuitoBackend/contexto'
 import { DictamenPanel } from '../../shared/circuitoBackend/DictamenPanel'
@@ -102,7 +102,7 @@ export default function CircuitoModificacionPage() {
 
         <Card className="p-6">
           <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">Historial del expediente</h2>
-          <HistorialAlta expedienteId={expediente.id} />
+          <HistorialExpediente expedienteId={expediente.id} />
         </Card>
       </div>
 

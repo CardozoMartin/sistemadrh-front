@@ -1,11 +1,7 @@
 import { Icon } from '@/components/ui/Icon'
+import type { DocumentoChecklist } from '../checklist'
 
-/** Un papel del checklist de un trámite (GET /catalogos/documentos/:tipoTramite). */
-export interface DocumentoChecklist {
-  id: number
-  descripcion: string
-  obligatorio: boolean
-}
+export type { DocumentoChecklist }
 
 interface Props {
   checklist: DocumentoChecklist[]

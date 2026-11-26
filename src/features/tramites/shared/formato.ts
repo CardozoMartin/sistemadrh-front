@@ -1,4 +1,4 @@
-// Cómo se muestran en pantalla los datos del cambio (mensajes, resúmenes, encabezados).
+// Cómo se muestran en pantalla datos comunes a todos los trámites (concesión, personas, ubicación).
 
 /** «N° 906» (o el id, si la concesión todavía no tiene número). */
 export const numeroConcesion = (c: { id: string; numero: string | null }) => `N° ${c.numero ?? c.id}`
@@ -8,3 +8,7 @@ export const nombres = (lista: { nombreCompleto: string }[]) => {
   const n = lista.map((p) => p.nombreCompleto)
   return n.length <= 1 ? (n[0] ?? '') : `${n.slice(0, -1).join(', ')} y ${n[n.length - 1]}`
 }
+
+/** «Localidad · Departamento · Distrito» (vacío si no hay nada registrado). */
+export const ubicacionConcesion = (u: { localidad: string | null; departamento: string | null; distrito: string | null }) =>
+  [u.localidad, u.departamento, u.distrito].filter(Boolean).join(' · ')

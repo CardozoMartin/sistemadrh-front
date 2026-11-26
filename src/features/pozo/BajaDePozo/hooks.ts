@@ -1,7 +1,7 @@
 // Caché de la Baja de Pozo (TanStack Query). Después de cada acción se actualiza la baja y se
 // refrescan el historial, las listas, los avisos a Distrito y la búsqueda de pozos.
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { altaKeys } from '@/features/tramites/AltaDeConcesion/hooks'
+import { expedienteKeys } from '@/features/tramites/shared/circuito/expediente'
 import { bajaPozoApi } from './api'
 import type { BajaBackend, BajaDeOficioDto } from './types'
 
@@ -94,7 +94,7 @@ export function useAccionBaja<TInput>(id: string, accion: (id: string, input: TI
       if (r && typeof r === 'object' && 'baja' in r) qc.setQueryData(bajaPozoKeys.baja(id), r as BajaBackend)
       else void qc.invalidateQueries({ queryKey: bajaPozoKeys.baja(id) })
       // El historial lo muestra el componente del alta (sirve para cualquier expediente).
-      void qc.invalidateQueries({ queryKey: altaKeys.historial(id) })
+      void qc.invalidateQueries({ queryKey: expedienteKeys.historial(id) })
       refrescar()
     },
   })

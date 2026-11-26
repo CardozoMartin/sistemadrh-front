@@ -12,6 +12,8 @@ interface Props {
   prefix: string
   /** Ubicación del inmueble: el distrito define qué árbol de suministro se ofrece. */
   ubicacion: UbicacionSeleccionada
+  /** Sin el campo de caudal asignado (ej: la reubicación, donde la magnitud no cambia). */
+  sinCaudal?: boolean
 }
 
 function Aviso({ icon, children }: { icon: string; children: ReactNode }) {
@@ -34,7 +36,7 @@ function conValorActual(opciones: string[], valor: string): Option[] {
  * canales y desagüe. Cada nivel ofrece lo que cuelga del último tramo elegido; los niveles que
  * la rama no tiene no aparecen.
  */
-export function SuministroFields({ prefix, ubicacion }: Props) {
+export function SuministroFields({ prefix, ubicacion, sinCaudal = false }: Props) {
   const n = (campo: string) => `${prefix}.${campo}`
   const { control, setValue, getValues } = useFormContext()
   const { catalogo, cargando, error } = useCatalogoSuministro()
@@ -73,7 +75,7 @@ export function SuministroFields({ prefix, ubicacion }: Props) {
       {!error && !cargando && !distritoCargado && <Aviso icon="info">Complete la ubicación del inmueble (sección 2) para ver las fuentes y canales del distrito.</Aviso>}
       {!error && !cargando && distritoCargado && !arbol && (
         <Aviso icon="warning">
-          El distrito {ubicacion.distrito} todavía no tiene árbol de suministro cargado. Puede completar la observación y el caudal asignado.
+          El distrito {ubicacion.distrito} todavía no tiene árbol de suministro cargado. Puede completar la observación{sinCaudal ? '' : ' y el caudal asignado'}.
         </Aviso>
       )}
 
@@ -120,14 +122,16 @@ export function SuministroFields({ prefix, ubicacion }: Props) {
         <p className="text-sm text-slate-500 md:col-span-2 dark:text-slate-400">De esta fuente no sale ningún sistema ni canal cargado en el árbol del distrito.</p>
       )}
 
-      <FormMaskedField
-        name={n('caudalAsignado')}
-        label="Caudal asignado (l/s)"
-        mask={decimalPositivo}
-        inputMode="decimal"
-        placeholder="Ej: 25.50"
-        hint="Se calcula desde los usos cargados; puede ajustarse manualmente."
-      />
+      {!sinCaudal && (
+        <FormMaskedField
+          name={n('caudalAsignado')}
+          label="Caudal asignado (l/s)"
+          mask={decimalPositivo}
+          inputMode="decimal"
+          placeholder="Ej: 25.50"
+          hint="Se calcula desde los usos cargados; puede ajustarse manualmente."
+        />
+      )}
 
       <FormTextareaField
         name={n('observacion')}

@@ -1,17 +1,15 @@
 import { Icon } from '@/components/ui/Icon'
 import { cn } from '@/lib/cn'
-import type { CambioBackend } from '../../backend.types'
-import { useChecklistCambio } from '../../hooks'
+
+type Papel = { id: number; descripcion: string }
 
 /**
- * Jurídico revisa los papeles (caso de uso, paso 25): el checklist del cambio con lo que trajo el
- * expediente al iniciarse en Catastro. Solo lectura.
+ * Jurídico revisa los papeles: el checklist del trámite con lo que trajo el expediente al iniciarse
+ * en Catastro. Solo lectura. `checklist` undefined (no cargó o falló): se muestra al menos lo presentado.
  */
-export function DocumentacionRevision({ datos }: { datos: CambioBackend }) {
-  const checklist = useChecklistCambio()
-  const presentados = new Set(datos.cambio.documentacionPresentada.map((d) => d.id))
-  // Sin el catálogo (o mientras carga), al menos lo presentado.
-  const papeles = checklist.data ?? datos.cambio.documentacionPresentada.map((d) => ({ ...d, obligatorio: false, orden: 0, activo: true }))
+export function DocumentacionRevision({ checklist, presentados: lista }: { checklist: Papel[] | undefined; presentados: Papel[] }) {
+  const presentados = new Set(lista.map((d) => d.id))
+  const papeles = checklist ?? lista
 
   return (
     <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">

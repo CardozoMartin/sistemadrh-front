@@ -19,7 +19,8 @@ import type { AltaBackend } from '../backend.types'
 import { ResumenBorrador } from '../components/ResumenBorrador'
 import { SECCIONES_CON_COMPONENTE as SECCIONES, seccionDeCampo } from '../components/secciones'
 import type { InfoSeccion } from '../components/secciones/config'
-import { useAccionAlta, useAlta, useDerivarCarga, useHistorial } from '../hooks'
+import { useAccionAlta, useAlta, useDerivarCarga } from '../hooks'
+import { useHistorial } from '../../shared/circuito/expediente'
 import { crearPreCargaSchema, type PreCargaForm } from '../schemas'
 
 type Dialogo = 'enviar' | null

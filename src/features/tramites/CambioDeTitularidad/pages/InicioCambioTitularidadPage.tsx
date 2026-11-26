@@ -17,10 +17,11 @@ import { BuscadorVigentes } from '../../shared/components/BuscadorVigentes'
 import { CambiosEnCurso } from '../components/CambiosEnCurso'
 import { ChecklistDocumentacion } from '../../shared/components/ChecklistDocumentacion'
 import type { DocumentoChecklist } from '../backend.types'
-import { esNumeroOcupado } from '../../shared/circuitoBackend/errores'
-import { numeroConcesion } from '../formato'
+import { esNumeroOcupado } from '../../shared/errores'
+import { numeroConcesion } from '../../shared/formato'
 import { useChecklistCambio, useIniciarCambio } from '../hooks'
-import { faltantesDelChecklist, inicioCambioSchema, type InicioCambioForm } from '../schemas'
+import { inicioCambioSchema, type InicioCambioForm } from '../schemas'
+import { faltantesDelChecklist } from '../../shared/checklist'
 
 /**
  * Paso 1 (Catastro), caso de uso pasos 1-5: búsqueda de la concesión vigente, número del

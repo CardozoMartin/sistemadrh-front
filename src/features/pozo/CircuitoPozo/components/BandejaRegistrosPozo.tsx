@@ -8,7 +8,7 @@ import { haceCuanto } from '@/lib/fechas'
 import { cn } from '@/lib/cn'
 import { backend } from '@/services/api/backend'
 import { MODO_DEMO } from '@/services/demo/modo'
-import { altaKeys } from '@/features/tramites/AltaDeConcesion/hooks'
+import { expedienteKeys } from '@/features/tramites/shared/circuito/expediente'
 import type { ExpedienteEnBandeja } from '@/features/tramites/AltaDeConcesion/backend.types'
 import type { OficinaPozo } from '../types'
 
@@ -24,7 +24,7 @@ const ESTADO: Record<string, { texto: string; color: string }> = {
 export function BandejaRegistrosPozo({ oficina }: { oficina: OficinaPozo }) {
   const navigate = useNavigate()
   const bandeja = useQuery({
-    queryKey: [...altaKeys.bandejas(), oficina],
+    queryKey: [...expedienteKeys.bandejas(), oficina],
     queryFn: async () => (await backend.get<ExpedienteEnBandeja[]>(`/expedientes/bandeja/${oficina}`)).data,
     refetchInterval: 30_000,
     enabled: MODO_DEMO,

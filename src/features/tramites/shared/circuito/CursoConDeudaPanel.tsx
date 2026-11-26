@@ -3,20 +3,20 @@ import { Alert } from '@/components/feedback/States'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { mensajeDeError } from '@/services/api/errors'
-import { Observaciones } from '../../../AltaDeConcesion/components/circuito/AccionesOficina'
-import { useCursoConDeudaCambio } from '../../hooks'
-import { SIGUIENTE_A_RECAUDACION as SIGUIENTE } from '../../recaudacion'
+import { Observaciones } from './campos'
+import type { HooksRecaudacion } from './PanelRecaudacion'
+import { SIGUIENTE_A_RECAUDACION as SIGUIENTE } from './recaudacion'
 import type { Terminado } from './terminado'
 
 /** Largo mínimo de la nota (igual que el backend). */
 const MINIMO_NOTA = 10
 
 /** En espera y no se pudo cobrar: pasa igual a Distrito con una nota de por qué (la deuda sigue registrada). */
-export function CursoConDeudaCambio({ expedienteId, numero, onTerminado }: { expedienteId: string; numero: string; onTerminado: (t: Terminado) => void }) {
+export function CursoConDeudaPanel({ expedienteId, numero, hooks, onTerminado }: { expedienteId: string; numero: string; hooks: HooksRecaudacion; onTerminado: (t: Terminado) => void }) {
   const [abierto, setAbierto] = useState(false)
   const [nota, setNota] = useState('')
   const [confirmar, setConfirmar] = useState(false)
-  const accion = useCursoConDeudaCambio(expedienteId)
+  const accion = hooks.useCursoConDeuda(expedienteId)
   const corta = nota.trim().length < MINIMO_NOTA
 
   if (!abierto) {

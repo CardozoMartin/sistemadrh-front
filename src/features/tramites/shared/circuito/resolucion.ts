@@ -1,6 +1,37 @@
 // Reglas de la carga de la resolución en Secretaría General (pasos 32-36). Las mismas que valida
 // el backend (ResolucionCambioDto y exigirPdf): número, fecha de firma no futura y el PDF escaneado.
 
+/** POST …/resolucion (multipart, común a los trámites): los datos de la resolución y el PDF escaneado. */
+export interface CargaResolucion {
+  numero: string
+  anio: number
+  fecha: string
+  observaciones?: string
+  archivo: File
+}
+
+/** La resolución ya cargada, como la devuelve el backend (`numero` viene como «N/AAAA»). */
+export interface ResolucionRegistrada {
+  numero: string
+  fecha: string
+  observaciones: string | null
+  conArchivo: boolean
+}
+
+/** El cuerpo multipart de POST …/resolucion (las observaciones van solo si hay). */
+export function resolucionAFormData(dto: CargaResolucion): FormData {
+  const form = new FormData()
+  form.append('numero', dto.numero)
+  form.append('anio', String(dto.anio))
+  form.append('fecha', dto.fecha)
+  if (dto.observaciones) form.append('observaciones', dto.observaciones)
+  form.append('archivo', dto.archivo)
+  return form
+}
+
+/** Opciones del POST multipart: el cliente manda JSON por defecto (axios arma el boundary solo) y el PDF puede tardar. */
+export const OPCIONES_MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60000 }
+
 /** Tope del PDF (igual que el backend: 10 MB). */
 export const MAX_MB_RESOLUCION = 10
 

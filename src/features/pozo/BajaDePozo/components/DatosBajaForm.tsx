@@ -1,7 +1,7 @@
 import { LoadingState } from '@/components/feedback/States'
 import { controlClass } from '@/components/form/styles'
 import { Icon } from '@/components/ui/Icon'
-import { Campo } from '@/features/tramites/AltaDeConcesion/components/circuito/AccionesOficina'
+import { Campo } from '@/features/tramites/shared/circuito/campos'
 import { cn } from '@/lib/cn'
 import { useDocumentosBaja } from '../hooks'
 import type { DatosBajaDto, DocumentoBaja } from '../types'

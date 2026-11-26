@@ -17,6 +17,8 @@ interface Props {
   /** Campo del formulario donde se guarda el polígono (PoligonoForm | null). */
   name: string
   titulo?: string
+  /** Sin el mapa de vista previa (ej: la reubicación, que muestra su propia comparación con el polígono vigente). */
+  sinMapa?: boolean
 }
 
 const formatearTamanio = (bytes: number) => (bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`)
@@ -38,7 +40,7 @@ function aVertices(anillo: number[][]): LatLng[] {
  * 3. Si el backend no está disponible, se lee en el navegador (como antes) y se avisa
  *    que no pasó por la validación de PostGIS.
  */
-export function KmlUploadField({ name, titulo = 'KML de la concesión' }: Props) {
+export function KmlUploadField({ name, titulo = 'KML de la concesión', sinMapa = false }: Props) {
   const { field } = useController({ name })
   const errorForm = useFieldError(name)
   const poligono = field.value as PoligonoForm | null
@@ -221,7 +223,7 @@ export function KmlUploadField({ name, titulo = 'KML de la concesión' }: Props)
             </div>
           )}
 
-          <PolygonPreviewMap coordenadas={poligono.coordenadas} etiqueta={`Concesión · ${formatearHa(poligono.hectareas)} ha`} />
+          {!sinMapa && <PolygonPreviewMap coordenadas={poligono.coordenadas} etiqueta={`Concesión · ${formatearHa(poligono.hectareas)} ha`} />}
         </div>
       )}
     </div>
